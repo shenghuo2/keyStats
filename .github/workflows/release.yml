@@ -37,15 +37,90 @@ jobs:
       - name: Build DMG
         run: ./scripts/build_dmg.sh
 
+      - name: Validate Sparkle private key
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          if [ -z "$SPARKLE_PRIVATE_KEY" ]; then
+            echo "SPARKLE_PRIVATE_KEY secret is required for Sparkle appcast signing."
+            exit 1
+          fi
+
+      - name: Fetch Sparkle tools (prebuilt)
+        env:
+          SPARKLE_VERSION: 2.8.1
+        run: |
+          ARCHIVE_PATH="$RUNNER_TEMP/Sparkle-${SPARKLE_VERSION}.tar.xz"
+          TOOLS_DIR="$RUNNER_TEMP/sparkle-tools"
+          curl -fL -o "$ARCHIVE_PATH" \
+            "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz"
+          mkdir -p "$TOOLS_DIR"
+          tar -xf "$ARCHIVE_PATH" -C "$TOOLS_DIR"
+
+          GENERATE_APPCAST_PATH="$(find "$TOOLS_DIR" -type f -name generate_appcast | head -n1)"
+          if [[ -z "$GENERATE_APPCAST_PATH" || ! -x "$GENERATE_APPCAST_PATH" ]]; then
+            echo "Unable to locate executable generate_appcast in Sparkle archive."
+            exit 1
+          fi
+
+          echo "SPARKLE_BIN=$(dirname "$GENERATE_APPCAST_PATH")" >> $GITHUB_ENV
+          "$GENERATE_APPCAST_PATH" --help >/dev/null
+
+      - name: Build Sparkle update archive
+        run: |
+          APP_NAME="KeyStats"
+          ARCHIVE_PATH="build/sparkle/$APP_NAME.xcarchive"
+          STAGING_DIR="build/sparkle/staging"
+          OUTPUT_DIR="build/sparkle/output"
+          mkdir -p "$STAGING_DIR" "$OUTPUT_DIR"
+
+          xcodebuild -project KeyStats.xcodeproj \
+            -scheme KeyStats \
+            -configuration Release \
+            -derivedDataPath build/sparkle/DerivedData \
+            -archivePath "$ARCHIVE_PATH" \
+            archive \
+            CODE_SIGN_IDENTITY="-" \
+            ARCHS="arm64 x86_64" \
+            ONLY_ACTIVE_ARCH=NO
+
+          APP_PATH="$ARCHIVE_PATH/Products/Applications/$APP_NAME.app"
+          cp -R "$APP_PATH" "$STAGING_DIR/"
+
+          codesign --force --deep --sign - --entitlements KeyStats/KeyStats.entitlements "$STAGING_DIR/$APP_NAME.app"
+          ditto -c -k --sequesterRsrc --keepParent "$STAGING_DIR/$APP_NAME.app" "$OUTPUT_DIR/$APP_NAME.zip"
+
+      - name: Generate Sparkle appcast
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          OUTPUT_DIR="build/sparkle/output"
+          KEY_FILE="$RUNNER_TEMP/sparkle_private.key"
+          DOWNLOAD_PREFIX="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}"
+          printf "%s" "$SPARKLE_PRIVATE_KEY" > "$KEY_FILE"
+          "$SPARKLE_BIN/generate_appcast" \
+            --ed-key-file "$KEY_FILE" \
+            --download-url-prefix "$DOWNLOAD_PREFIX/" \
+            -o "$OUTPUT_DIR/appcast.xml" \
+            "$OUTPUT_DIR"
+          grep -q "sparkle:edSignature" "$OUTPUT_DIR/appcast.xml"
+
       - name: Calculate SHA256
         id: sha256
         run: echo "SHA256=$(shasum -a 256 KeyStats.dmg | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+
+      - name: Prepare macOS artifacts
+        run: |
+          mkdir -p dist/macos
+          cp KeyStats.dmg dist/macos/KeyStats.dmg
+          cp build/sparkle/output/KeyStats.zip dist/macos/KeyStats.zip
+          cp build/sparkle/output/appcast.xml dist/macos/appcast.xml
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
           name: macos-dmg
-          path: KeyStats.dmg
+          path: dist/macos/*
 
   # ============================================================
   # Windows Build
@@ -103,21 +178,27 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: macos-dmg
+          path: release-assets/macos
 
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
           name: windows-zip
+          path: release-assets/windows
 
       - name: List artifacts
-        run: ls -la
+        run: |
+          ls -la release-assets/macos
+          ls -la release-assets/windows
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            KeyStats.dmg
-            *.zip
+            release-assets/macos/KeyStats.dmg
+            release-assets/macos/KeyStats.zip
+            release-assets/macos/appcast.xml
+            release-assets/windows/*.zip
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

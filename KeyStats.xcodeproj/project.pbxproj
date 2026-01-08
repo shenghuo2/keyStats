@@ -8,8 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		941ADB172F18D1AE00B2D578 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 941ADB162F18D1AE00B2D578 /* PostHog */; };
-		A1000020 /* AllTimeStatsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000020 /* AllTimeStatsWindowController.swift */; };
-		A1000021 /* AllTimeStatsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000021 /* AllTimeStatsViewController.swift */; };
+		941ADB182F18D1AE00B2D578 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 941ADB1A2F18D1AE00B2D578 /* Sparkle */; };
 		A1000001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000001 /* AppDelegate.swift */; };
 		A1000002 /* InputMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000002 /* InputMonitor.swift */; };
 		A1000003 /* StatsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000003 /* StatsManager.swift */; };
@@ -25,6 +24,8 @@
 		A1000013 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000015 /* SettingsWindowController.swift */; };
 		A1000014 /* HoverIconButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000016 /* HoverIconButton.swift */; };
 		A1000015 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000017 /* NotificationManager.swift */; };
+		A1000020 /* AllTimeStatsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000020 /* AllTimeStatsWindowController.swift */; };
+		A1000021 /* AllTimeStatsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000021 /* AllTimeStatsViewController.swift */; };
 		A1000022 /* AppStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000022 /* AppStats.swift */; };
 		A1000023 /* AppActivityTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000023 /* AppActivityTracker.swift */; };
 		A1000024 /* AppStatsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000024 /* AppStatsWindowController.swift */; };
@@ -32,11 +33,10 @@
 		A1000026 /* ActivityHeatmapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000026 /* ActivityHeatmapView.swift */; };
 		A1000027 /* MouseDistanceCalibrationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000027 /* MouseDistanceCalibrationViewController.swift */; };
 		A1000028 /* MouseDistanceCalibrationWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000028 /* MouseDistanceCalibrationWindowController.swift */; };
+		A1000029 /* UpdateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000029 /* UpdateManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		A2000020 /* AllTimeStatsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllTimeStatsWindowController.swift; sourceTree = "<group>"; };
-		A2000021 /* AllTimeStatsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllTimeStatsViewController.swift; sourceTree = "<group>"; };
 		A2000001 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		A2000002 /* InputMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputMonitor.swift; sourceTree = "<group>"; };
 		A2000003 /* StatsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsManager.swift; sourceTree = "<group>"; };
@@ -53,6 +53,8 @@
 		A2000015 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		A2000016 /* HoverIconButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HoverIconButton.swift; sourceTree = "<group>"; };
 		A2000017 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
+		A2000020 /* AllTimeStatsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllTimeStatsWindowController.swift; sourceTree = "<group>"; };
+		A2000021 /* AllTimeStatsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllTimeStatsViewController.swift; sourceTree = "<group>"; };
 		A2000022 /* AppStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStats.swift; sourceTree = "<group>"; };
 		A2000023 /* AppActivityTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppActivityTracker.swift; sourceTree = "<group>"; };
 		A2000024 /* AppStatsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStatsWindowController.swift; sourceTree = "<group>"; };
@@ -60,6 +62,7 @@
 		A2000026 /* ActivityHeatmapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityHeatmapView.swift; sourceTree = "<group>"; };
 		A2000027 /* MouseDistanceCalibrationViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MouseDistanceCalibrationViewController.swift; sourceTree = "<group>"; };
 		A2000028 /* MouseDistanceCalibrationWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MouseDistanceCalibrationWindowController.swift; sourceTree = "<group>"; };
+		A2000029 /* UpdateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateManager.swift; sourceTree = "<group>"; };
 		A3000001 /* KeyStats.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KeyStats.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A3000002 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A3000003 /* KeyStats.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = KeyStats.entitlements; sourceTree = "<group>"; };
@@ -71,6 +74,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				941ADB172F18D1AE00B2D578 /* PostHog in Frameworks */,
+				941ADB182F18D1AE00B2D578 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -101,7 +105,6 @@
 				A2000009 /* MainWindowViewController.swift */,
 				A2000016 /* HoverIconButton.swift */,
 				A2000017 /* NotificationManager.swift */,
-				A2000014 /* SettingsViewController.swift */,
 				A2000015 /* SettingsWindowController.swift */,
 				A2000027 /* MouseDistanceCalibrationViewController.swift */,
 				A2000028 /* MouseDistanceCalibrationWindowController.swift */,
@@ -109,6 +112,8 @@
 				A2000026 /* ActivityHeatmapView.swift */,
 				A2000021 /* AllTimeStatsViewController.swift */,
 				A2000013 /* LaunchAtLoginManager.swift */,
+				A2000014 /* SettingsViewController.swift */,
+				A2000029 /* UpdateManager.swift */,
 				A2000012 /* Localizable.strings */,
 				A2000006 /* Assets.xcassets */,
 				A2000007 /* Main.storyboard */,
@@ -142,6 +147,10 @@
 			dependencies = (
 			);
 			name = KeyStats;
+			packageProductDependencies = (
+				941ADB162F18D1AE00B2D578 /* PostHog */,
+				941ADB1A2F18D1AE00B2D578 /* Sparkle */,
+			);
 			productName = KeyStats;
 			productReference = A3000001 /* KeyStats.app */;
 			productType = "com.apple.product-type.application";
@@ -173,6 +182,7 @@
 			mainGroup = A5000001;
 			packageReferences = (
 				941ADB152F18D1AE00B2D578 /* XCRemoteSwiftPackageReference "posthog-ios" */,
+				941ADB192F18D1AE00B2D578 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			productRefGroup = A5000003 /* Products */;
 			projectDirPath = "";
@@ -222,6 +232,7 @@
 				A1000026 /* ActivityHeatmapView.swift in Sources */,
 				A1000014 /* HoverIconButton.swift in Sources */,
 				A1000015 /* NotificationManager.swift in Sources */,
+				A1000029 /* UpdateManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -364,10 +375,11 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = KeyStats/KeyStats.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 18;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 228XJY7Z32;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = KeyStats/Info.plist;
@@ -391,10 +403,11 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = KeyStats/KeyStats.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 18;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = 228XJY7Z32;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = KeyStats/Info.plist;
@@ -444,6 +457,14 @@
 				minimumVersion = 3.0.0;
 			};
 		};
+		941ADB192F18D1AE00B2D578 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -451,6 +472,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 941ADB152F18D1AE00B2D578 /* XCRemoteSwiftPackageReference "posthog-ios" */;
 			productName = PostHog;
+		};
+		941ADB1A2F18D1AE00B2D578 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 941ADB192F18D1AE00B2D578 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -1,53 +1,46 @@
 #!/bin/bash
 
-# 发布脚本：自动更新版本号并创建 tag
+set -euo pipefail
 
-set -e
+usage() {
+    echo "Usage: ./scripts/release.sh <version>"
+    echo "Example: ./scripts/release.sh 1.8"
+}
 
-if [ -z "$1" ]; then
-    echo "用法: ./scripts/release.sh <版本号>"
-    echo "示例: ./scripts/release.sh 1.8"
+VERSION="${1:-}"
+if [[ -z "$VERSION" ]]; then
+    usage
     exit 1
 fi
 
-VERSION=$1
+TAG="v$VERSION"
+PBXPROJ="KeyStats.xcodeproj/project.pbxproj"
 
-# 获取脚本所在目录的上级目录（项目根目录）
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_DIR"
 
-echo "📦 发布 v$VERSION"
+echo "Release $TAG"
 
-# 更新版本号
-echo "📝 更新版本号..."
-sed -i '' "s/MARKETING_VERSION = .*/MARKETING_VERSION = $VERSION;/" KeyStats.xcodeproj/project.pbxproj
-
-# 更新 build 号
-echo "🔢 更新 build 号..."
-CURRENT_BUILD=$(rg -m 1 "CURRENT_PROJECT_VERSION = " KeyStats.xcodeproj/project.pbxproj | sed -E 's/.*CURRENT_PROJECT_VERSION = ([0-9]+);.*/\1/')
-if [ -z "$CURRENT_BUILD" ]; then
-    echo "❌ 无法读取当前 build 号"
+current_build=$(perl -ne 'if (/CURRENT_PROJECT_VERSION = ([0-9]+);/) { print $1; exit }' "$PBXPROJ")
+if [[ -z "${current_build:-}" ]]; then
+    echo "Error: unable to read CURRENT_PROJECT_VERSION from $PBXPROJ"
     exit 1
 fi
-NEW_BUILD=$((CURRENT_BUILD + 1))
-sed -i '' "s/CURRENT_PROJECT_VERSION = .*/CURRENT_PROJECT_VERSION = $NEW_BUILD;/" KeyStats.xcodeproj/project.pbxproj
-echo "🔢 build号更新至 $NEW_BUILD"
 
-# 提交更改
-echo "💾 提交更改..."
-git add KeyStats.xcodeproj/project.pbxproj
+new_build=$((current_build + 1))
+perl -0pi -e "s/CURRENT_PROJECT_VERSION = [0-9]+;/CURRENT_PROJECT_VERSION = ${new_build};/g; s/MARKETING_VERSION = [^;]+;/MARKETING_VERSION = ${VERSION};/g" "$PBXPROJ"
+echo "Set MARKETING_VERSION=$VERSION, CURRENT_PROJECT_VERSION=$new_build"
+
+echo "Committing version bump..."
+git add "$PBXPROJ"
 git commit -m "chore: bump version to $VERSION"
 
-# 创建 tag
-echo "🏷️  创建 tag..."
-git tag "v$VERSION"
-
-# 推送
-echo "🚀 推送到远程..."
+echo "Tagging and pushing..."
+git tag "$TAG"
 git push origin main
-git push origin "v$VERSION"
+git push origin "$TAG"
 
 echo ""
-echo "✅ 发布完成！"
-echo "   GitHub Actions 将自动构建并发布 v$VERSION"
+echo "Release complete for $TAG"
+echo "GitHub Actions will build and publish artifacts, including Sparkle appcast."

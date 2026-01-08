@@ -53,6 +53,7 @@ class StatsPopoverViewController: NSViewController {
     
     // 底部按钮
     private var quitButton: NSButton!
+    private var checkUpdatesButton: NSButton!
     private var permissionButton: NSButton!
     private var lastRangeSegment = 0
     private var lastMetricSegment = 0
@@ -288,11 +289,17 @@ class StatsPopoverViewController: NSViewController {
         buttonStack.spacing = 12
         buttonStack.translatesAutoresizingMaskIntoConstraints = false
         
+
+        checkUpdatesButton = NSButton(title: NSLocalizedString("button.checkUpdates", comment: ""), target: self, action: #selector(checkForUpdates))
+        checkUpdatesButton.bezelStyle = .rounded
+        checkUpdatesButton.controlSize = .regular
+        
         // 退出按钮
         quitButton = NSButton(title: NSLocalizedString("button.quit", comment: ""), target: self, action: #selector(quitApp))
         quitButton.bezelStyle = .rounded
         quitButton.controlSize = .regular
         
+        buttonStack.addArrangedSubview(checkUpdatesButton)
         buttonStack.addArrangedSubview(quitButton)
 
         settingsButton = makeSymbolButton(systemName: "gearshape",
@@ -695,6 +702,10 @@ class StatsPopoverViewController: NSViewController {
         _ = InputMonitor.shared.checkAccessibilityPermission()
         openAccessibilitySettings()
         updatePermissionButtonVisibility()
+    }
+
+    @objc private func checkForUpdates() {
+        UpdateManager.shared.checkForUpdates()
     }
     
     @objc private func quitApp() {
