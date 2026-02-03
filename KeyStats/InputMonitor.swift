@@ -11,6 +11,7 @@ class InputMonitor {
     private var isMonitoring = false
     private let mouseSampleInterval: TimeInterval = 1.0 / 30.0
     private var lastMouseSampleTime: TimeInterval = 0
+    private let swapLeftRightButtonKey = "com.apple.mouse.swapLeftRightButton"
     
     private init() {}
     
@@ -105,6 +106,9 @@ class InputMonitor {
     
     private func handleEvent(type: CGEventType, event: CGEvent) {
         let statsManager = StatsManager.shared
+        let appIdentityProvider: () -> AppIdentity? = {
+            statsManager.appStatsEnabled ? AppActivityTracker.shared.appIdentity(for: event) : nil
+        }
         
         switch type {
         case .keyDown:
@@ -112,24 +116,29 @@ class InputMonitor {
             let isAutoRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
             if !isAutoRepeat {
                 let keyName = keyName(for: event)
-                let appIdentity = statsManager.appStatsEnabled ? AppActivityTracker.shared.appIdentity(for: event) : nil
+                let appIdentity = appIdentityProvider()
                 statsManager.incrementKeyPresses(keyName: keyName, appIdentity: appIdentity)
             }
             
         case .leftMouseDown:
-            let appIdentity = statsManager.appStatsEnabled ? AppActivityTracker.shared.appIdentity(for: event) : nil
-            statsManager.incrementLeftClicks(appIdentity: appIdentity)
+            if isPrimaryButtonRight() {
+                statsManager.incrementRightClicks(appIdentity: appIdentityProvider())
+            } else {
+                statsManager.incrementLeftClicks(appIdentity: appIdentityProvider())
+            }
             
         case .rightMouseDown:
-            let appIdentity = statsManager.appStatsEnabled ? AppActivityTracker.shared.appIdentity(for: event) : nil
-            statsManager.incrementRightClicks(appIdentity: appIdentity)
+            if isPrimaryButtonRight() {
+                statsManager.incrementLeftClicks(appIdentity: appIdentityProvider())
+            } else {
+                statsManager.incrementRightClicks(appIdentity: appIdentityProvider())
+            }
             
         case .mouseMoved, .leftMouseDragged, .rightMouseDragged:
             handleMouseMove(event: event)
             
         case .scrollWheel:
-            let appIdentity = statsManager.appStatsEnabled ? AppActivityTracker.shared.appIdentity(for: event) : nil
-            handleScroll(event: event, appIdentity: appIdentity)
+            handleScroll(event: event, appIdentity: appIdentityProvider())
             
         default:
             break
@@ -144,6 +153,20 @@ class InputMonitor {
             return baseName
         }
         return modifiers.joined(separator: "+") + "+" + baseName
+    }
+
+    private func isPrimaryButtonRight() -> Bool {
+        let key = swapLeftRightButtonKey as CFString
+        if let value = CFPreferencesCopyValue(key, kCFPreferencesAnyApplication, kCFPreferencesAnyUser, kCFPreferencesCurrentHost) as? NSNumber {
+            return value.boolValue
+        }
+        if let value = CFPreferencesCopyValue(key, kCFPreferencesAnyApplication, kCFPreferencesCurrentUser, kCFPreferencesAnyHost) as? NSNumber {
+            return value.boolValue
+        }
+        if let value = UserDefaults.standard.object(forKey: swapLeftRightButtonKey) as? NSNumber {
+            return value.boolValue
+        }
+        return false
     }
 
     private func modifierNames(for flags: CGEventFlags, keyCode: Int) -> [String] {
