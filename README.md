@@ -6,13 +6,6 @@ English | [简体中文](./README_ZH.md)
 # KeyStats - macOS/Windows Keyboard & Mouse Statistics Menu Bar App
 
 KeyStats is a lightweight native menu bar application for macOS and Windows that tracks daily keyboard keystrokes, mouse clicks, mouse movement distance, and scroll distance.
-<div>
- <img width="382" height="791" alt="image" src="https://github.com/user-attachments/assets/85c0b483-ad4a-458c-8bf4-c4f054b951bb" />
-  <img width="624" height="724" alt="image" src="https://github.com/user-attachments/assets/b95d7f61-c3e6-4d65-9fcf-690b38836c92" />
-</div>
-
-
-
 
 <img width="305" height="632" alt="image" src="https://github.com/user-attachments/assets/85c0b483-ad4a-458c-8bf4-c4f054b951bb" />
 
