@@ -1,150 +1,143 @@
-[English](./README_EN.md) | 简体中文
-
+English | [简体中文](./README.md)
 
 <img width="128" height="128" alt="ICON-iOS-Default-256x256@2x" src="https://github.com/user-attachments/assets/842780ed-c7a1-4c1b-a901-1f1d8babe51a" />
 
 
-# KeyStats - macOS/Windows 键鼠统计菜单栏应用
+# KeyStats - macOS/Windows Keyboard & Mouse Statistics Menu Bar App
 
+KeyStats is a lightweight native menu bar application for macOS and Windows that tracks daily keyboard keystrokes, mouse clicks, mouse movement distance, and scroll distance.
 
-KeyStats 是一款轻量级的 macOS/Windows 原生菜单栏应用，用于统计用户每日的键盘敲击次数、鼠标点击次数、鼠标移动距离和滚动距离。
-
-
-  
-<img width="300" height="581" alt="image" src="https://github.com/user-attachments/assets/c5146f66-0aa3-49ce-9184-2c75301bf398" />
 
 <img width="320" height="581" alt="image" src="https://github.com/user-attachments/assets/b363093e-9aad-4d8a-8b12-1918ef843b3f" />
 
-<img width="360" height="681" alt="image" src="https://github.com/user-attachments/assets/24a796a1-6d21-4186-9568-b223ac309078" />
 
-
-## 安装与使用
+## Installation & Usage
 
 ### macOS
 
-#### 方式一：使用 Homebrew 安装
+#### Option 1: Install via Homebrew
 
 ```bash
-# 订阅 tap
+# Tap the repository
 brew tap debugtheworldbot/keystats
 
-# 安装应用
+# Install the app
 brew install keystats
 ```
 
-更新应用：
+Update the app:
 ```bash
 brew upgrade keystats
 ```
 
-#### 方式二：[从 GitHub Release 下载](https://github.com/debugtheworldbot/keyStats/releases)
+#### Option 2: [Download from GitHub Releases](https://github.com/debugtheworldbot/keyStats/releases)
 
 ### Windows
 
-[从 GitHub Release 下载](https://github.com/debugtheworldbot/keyStats/releases) Windows 版本安装包
+[Download from GitHub Releases](https://github.com/debugtheworldbot/keyStats/releases) the Windows installer
 
-> **无需安装任何依赖**：Windows 版本使用 .NET Framework 4.8，Windows 10 (1903+) 和 Windows 11 已预装，开箱即用。如果你的 Windows 10 版本较旧（早于 1903），可以升级系统或[手动安装 .NET Framework 4.8](https://dotnet.microsoft.com/download/dotnet-framework/net48)。
+> **No dependencies required**: The Windows version uses .NET Framework 4.8, which is pre-installed on Windows 10 (1903+) and Windows 11 - ready to use out of the box. If your Windows 10 version is older (before 1903), you can upgrade your system or [manually install .NET Framework 4.8](https://dotnet.microsoft.com/download/dotnet-framework/net48).
 
-## 功能特性
+## Features
 
-- **键盘敲击统计**：实时统计每日键盘按键次数
-- **鼠标点击统计**：分别统计左键和右键点击次数
-- **鼠标移动距离**：追踪鼠标移动的总距离
-- **滚动距离统计**：记录页面滚动的累计距离
-- **菜单栏显示**：核心数据直接显示在菜单栏
-- **详细面板**：点击菜单栏图标查看完整统计信息
-- **每日自动重置**：午夜自动重置统计数据
-- **数据持久化**：应用重启后数据不丢失
+- **Keyboard Keystroke Statistics**: Real-time tracking of daily key presses
+- **Mouse Click Statistics**: Separate tracking of left and right clicks
+- **Mouse Movement Distance**: Track total distance of mouse movement
+- **Scroll Distance Statistics**: Record cumulative page scroll distance
+- **Menu Bar Display**: Core data displayed directly in macOS menu bar
+- **Detailed Panel**: Click menu bar icon to view complete statistics
+- **Daily Auto-Reset**: Statistics automatically reset at midnight
+- **Data Persistence**: Data persists after application restart
 
-## 系统要求
+## System Requirements
 
 ### macOS
-- macOS 13.0 (Ventura) 或更高版本
+- macOS 13.0 (Ventura) or higher
 
 ### Windows
-- **Windows 10 (1903+) 或 Windows 11**
-- **无需安装任何依赖**：使用 .NET Framework 4.8（Windows 10/11 已预装，开箱即用）
-- **应用大小**：约 5-10 MB（轻量级，无需额外运行时）
+- **Windows 10 (1903+) or Windows 11**
+- **No dependencies required**: Uses .NET Framework 4.8 (pre-installed on Windows 10/11, ready to use out of the box)
+- **App size**: ~5-10 MB (lightweight, no additional runtime needed)
 
-> **注意**：如果你的 Windows 10 版本较旧（早于 1903），可以：
-> 1. 升级到 Windows 10 1903 或更高版本（推荐）
-> 2. 或手动安装 .NET Framework 4.8：[下载链接](https://dotnet.microsoft.com/download/dotnet-framework/net48)
+> **Note**: If your Windows 10 version is older (before 1903), you can:
+> 1. Upgrade to Windows 10 1903 or higher (recommended)
+> 2. Or manually install .NET Framework 4.8: [Download link](https://dotnet.microsoft.com/download/dotnet-framework/net48)
 
 
-## 首次运行权限设置
+## First Run Permission Setup
 
 ### macOS
 
-KeyStats 需要**辅助功能权限**才能监听键盘和鼠标事件。首次运行时：
+KeyStats requires **Accessibility permissions** to monitor keyboard and mouse events. On first run:
 
-1. 应用会弹出权限请求对话框
-2. 点击"打开系统设置"
-3. 在"隐私与安全性" > "辅助功能"中找到 KeyStats
-4. 开启 KeyStats 的权限开关
-5. 授权后应用将自动开始统计
+1. The app will prompt a permission request dialog
+2. Click "Open System Settings"
+3. Find KeyStats in "Privacy & Security" > "Accessibility"
+4. Enable the permission toggle for KeyStats
+5. Once authorized, the app will automatically start tracking
 
-> **注意**：如果没有授予权限，应用将无法统计任何数据。
+> **Note**: Without granting permissions, the app will not be able to track any data.
 >
-> **重新安装/升级app提示**：由于应用未进行签名，每次重新安装后 macOS 不会自动更新辅助功能授权。请先在"隐私与安全性">"辅助功能"中移除 KeyStats 的旧授权，再回到应用点击"获取权限"按钮重新授权即可。
+> **Reinstall/upgrade tip**: Because the app is not signed, macOS will not automatically update Accessibility authorization after each reinstall. Remove the existing KeyStats entry in "Privacy & Security" > "Accessibility", then return to the app and click the "Get Permission" button to request access again.
 
 ### Windows
 
-Windows 版本**无需额外权限设置**，应用启动后会自动开始统计。
+The Windows version **requires no additional permission setup**. The app will automatically start tracking once launched.
 
-> **注意**：首次启动时，Windows 可能会弹出安全警告，点击"仍要运行"即可。
+> **Note**: On first launch, Windows may show a security warning. Click "Run anyway" to proceed.
 
-## 使用说明
+## Usage Instructions
 
-### 菜单栏显示
+### Menu Bar Display
 
-应用运行后，菜单栏会显示：
+Once the app is running, the menu bar will show:
 
 ```
 123
 45
 ```
 
-- 上面的数字表示今日键盘按下的总次数
-- 下面的数字表示今日鼠标点击的总次数（包含左右键）
+- The upper number represents total keyboard presses today
+- The lower number represents total mouse clicks today (including left and right buttons)
 
-当数字较大时会自动格式化：
-- 1,000+ 显示为 `1.0K`
-- 1,000,000+ 显示为 `1.0M`
+Large numbers are automatically formatted:
+- 1,000+ displayed as `1.0K`
+- 1,000,000+ displayed as `1.0M`
 
-### 详细面板
+### Detailed Panel
 
-点击菜单栏图标会弹出详细统计面板，显示：
+Clicking the menu bar icon opens the detailed statistics panel, showing:
 
-| 统计项 | 说明 |
-|--------|------|
-| 键盘敲击 | 今日按键总次数 |
-| 左键点击 | 鼠标左键点击次数 |
-| 右键点击 | 鼠标右键点击次数 |
-| 鼠标移动 | 鼠标移动的总距离 |
-| 滚动距离 | 页面滚动的累计距离 |
+| Statistic | Description |
+|-----------|-------------|
+| Keyboard Strokes | Total key presses today |
+| Left Clicks | Mouse left button clicks |
+| Right Clicks | Mouse right button clicks |
+| Mouse Movement | Total distance of mouse movement |
+| Scroll Distance | Cumulative page scroll distance |
 
-### 功能按钮
+### Action Buttons
 
-- **重置统计**：手动清零今日所有统计数据
-- **退出应用**：关闭 KeyStats
+- **Reset Statistics**: Manually clear all statistics for today
+- **Quit Application**: Close KeyStats
 
-## 项目结构
+## Project Structure
 
 ### macOS
 
 ```
 KeyStats/
-├── KeyStats.xcodeproj/     # Xcode 项目文件
+├── KeyStats.xcodeproj/     # Xcode project files
 ├── KeyStats/
-│   ├── AppDelegate.swift           # 应用入口，权限管理
-│   ├── InputMonitor.swift          # 输入事件监听器
-│   ├── StatsManager.swift          # 统计数据管理
-│   ├── MenuBarController.swift     # 菜单栏控制器
-│   ├── StatsPopoverViewController.swift  # 详细面板视图
-│   ├── Info.plist                  # 应用配置
-│   ├── KeyStats.entitlements       # 权限配置
-│   ├── Main.storyboard             # 主界面
-│   └── Assets.xcassets/            # 资源文件
+│   ├── AppDelegate.swift           # Application entry point, permission management
+│   ├── InputMonitor.swift          # Input event monitor
+│   ├── StatsManager.swift          # Statistics data manager
+│   ├── MenuBarController.swift     # Menu bar controller
+│   ├── StatsPopoverViewController.swift  # Detailed panel view
+│   ├── Info.plist                  # Application configuration
+│   ├── KeyStats.entitlements       # Permission configuration
+│   ├── Main.storyboard             # Main interface
+│   └── Assets.xcassets/            # Resource files
 └── README.md
 ```
 
@@ -152,59 +145,59 @@ KeyStats/
 
 ```
 KeyStats.Windows/
-├── KeyStats.sln                    # Visual Studio 解决方案文件
+├── KeyStats.sln                    # Visual Studio solution file
 ├── KeyStats/
-│   ├── App.xaml                    # 应用入口定义
-│   ├── App.xaml.cs                 # 应用入口逻辑
+│   ├── App.xaml                    # Application entry definition
+│   ├── App.xaml.cs                 # Application entry logic
 │   ├── Services/
-│   │   ├── InputMonitorService.cs  # 输入事件监听服务
-│   │   ├── StatsManager.cs         # 统计数据管理
-│   │   ├── NotificationService.cs  # 通知服务
-│   │   └── StartupManager.cs       # 开机启动管理
+│   │   ├── InputMonitorService.cs  # Input event monitor service
+│   │   ├── StatsManager.cs         # Statistics data manager
+│   │   ├── NotificationService.cs  # Notification service
+│   │   └── StartupManager.cs       # Startup management
 │   ├── ViewModels/
-│   │   ├── TrayIconViewModel.cs    # 托盘图标视图模型
-│   │   └── StatsPopupViewModel.cs  # 统计面板视图模型
+│   │   ├── TrayIconViewModel.cs    # Tray icon view model
+│   │   └── StatsPopupViewModel.cs  # Stats popup view model
 │   ├── Views/
-│   │   └── StatsPopupWindow.xaml   # 统计面板界面
-│   ├── Models/                     # 数据模型
-│   ├── Helpers/                    # 工具类
-│   └── Resources/                  # 资源文件
-└── build.ps1                       # 构建脚本
+│   │   └── StatsPopupWindow.xaml   # Stats popup window
+│   ├── Models/                     # Data models
+│   ├── Helpers/                    # Utility classes
+│   └── Resources/                  # Resource files
+└── build.ps1                       # Build script
 ```
 
-## 技术实现
+## Technical Implementation
 
 ### macOS
 
-- **语言**：Swift 5.0
-- **框架**：AppKit, CoreGraphics
-- **事件监听**：使用 `CGEvent.tapCreate` 创建全局事件监听器
-- **数据存储**：使用 `UserDefaults` 进行本地持久化
-- **UI 模式**：纯菜单栏应用（LSUIElement = true）
+- **Language**: Swift 5.0
+- **Frameworks**: AppKit, CoreGraphics
+- **Event Monitoring**: Global event listener using `CGEvent.tapCreate`
+- **Data Storage**: Local persistence using `UserDefaults`
+- **UI Mode**: Pure menu bar application (LSUIElement = true)
 
 ### Windows
 
-- **语言**：C# 10
-- **框架**：WPF (.NET Framework 4.8)
-- **架构模式**：MVVM (Model-View-ViewModel)
-- **事件监听**：使用 Windows 低级键盘/鼠标钩子 (SetWindowsHookEx)
-- **数据存储**：使用 JSON 文件进行本地持久化
-- **UI 模式**：系统托盘应用
-- **优势**：无需安装运行时，Windows 10/11 开箱即用，应用体积小（5-10 MB）
+- **Language**: C# 10
+- **Framework**: WPF (.NET Framework 4.8)
+- **Architecture**: MVVM (Model-View-ViewModel)
+- **Event Monitoring**: Windows low-level keyboard/mouse hooks (SetWindowsHookEx)
+- **Data Storage**: Local persistence using JSON files
+- **UI Mode**: System tray application
+- **Advantages**: No runtime installation required, ready to use on Windows 10/11 out of the box, small app size (5-10 MB)
 
-## 隐私说明
+## Privacy Statement
 
-KeyStats 仅统计按键和点击的**次数**，**不会记录**：
-- 具体按下了哪些键
-- 输入的文字内容
-- 点击的具体位置或应用
+KeyStats only tracks the **count** of keystrokes and clicks, and **does NOT record**:
+- Which specific keys were pressed
+- Text content that was typed
+- Specific click locations or applications
 
-所有数据仅存储在本地，不会上传到任何服务器。
+All data is stored locally only and is never uploaded to any server.
 
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=debugtheworldbot/keyStats&type=date&legend=top-left)](https://www.star-history.com/#debugtheworldbot/keyStats&type=date&legend=top-left)
 
-## 许可证
+## License
 
 MIT License
