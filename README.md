@@ -1,4 +1,4 @@
-English | [简体中文](./README.md)
+English | [简体中文](./README_ZH.md)
 
 <img width="128" height="128" alt="ICON-iOS-Default-256x256@2x" src="https://github.com/user-attachments/assets/842780ed-c7a1-4c1b-a901-1f1d8babe51a" />
 
@@ -13,6 +13,8 @@ KeyStats is a lightweight native menu bar application for macOS and Windows that
 
 
 
+
+<img width="305" height="632" alt="image" src="https://github.com/user-attachments/assets/85c0b483-ad4a-458c-8bf4-c4f054b951bb" />
 
 <img width="320" height="581" alt="image" src="https://github.com/user-attachments/assets/b363093e-9aad-4d8a-8b12-1918ef843b3f" />
 
