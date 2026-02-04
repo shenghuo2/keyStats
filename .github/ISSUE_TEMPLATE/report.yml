@@ -1,0 +1,34 @@
+name: Bug / Question Report
+description: Report a bug or ask a question
+title: "[Report]: "
+labels: ["needs-triage"]
+body:
+  - type: checkboxes
+    id: platform
+    attributes:
+      label: Affected Platform
+      description: Select at least one platform where the issue occurs
+      options:
+        - label: macOS
+        - label: Windows
+    validations:
+      required: true
+
+  - type: dropdown
+    id: report_type
+    attributes:
+      label: Report Type
+      options:
+        - Bug
+        - Question
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Clearly describe the problem or question
+      placeholder: What happened? What did you expect?
+    validations:
+      required: true
