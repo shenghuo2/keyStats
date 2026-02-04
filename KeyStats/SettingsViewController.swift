@@ -9,6 +9,11 @@ private func resolvedCGColor(_ color: NSColor, for view: NSView) -> CGColor {
     return resolved
 }
 
+private func resolvedColor(_ color: NSColor, for view: NSView) -> NSColor {
+    let cgColor = resolvedCGColor(color, for: view)
+    return NSColor(cgColor: cgColor) ?? color
+}
+
 final class SettingsViewController: NSViewController, NSTextFieldDelegate {
 
     private var scrollView: NSScrollView!
@@ -305,7 +310,7 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
         contentStack.setCustomSpacing(0, after: actionSection)
 
         NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
+            scrollView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
@@ -483,8 +488,13 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
 
     private func updateAppearance() {
         view.layer?.backgroundColor = resolvedCGColor(NSColor.windowBackgroundColor, for: view)
-        let cardBackground = NSColor(calibratedRed: 0.9686, green: 0.9686, blue: 0.9686, alpha: 1.0)
+        view.window?.backgroundColor = resolvedColor(NSColor.windowBackgroundColor, for: view)
+        let isDarkMode = view.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        let cardBackground = isDarkMode
+            ? NSColor(white: 0.18, alpha: 1.0)
+            : NSColor.controlBackgroundColor.withAlphaComponent(0.85)
         let shadowColor = NSColor.black.withAlphaComponent(0.07)
+        let borderColor = NSColor.separatorColor.withAlphaComponent(0.16)
         let dividerColor = NSColor.separatorColor.withAlphaComponent(0.12)
         let optionDividerColor = NSColor.separatorColor.withAlphaComponent(0.14)
 
@@ -492,7 +502,8 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
             guard let layer = card.layer else { continue }
             layer.cornerRadius = 12
             layer.backgroundColor = resolvedCGColor(cardBackground, for: view)
-            layer.borderWidth = 0
+            layer.borderWidth = 0.5
+            layer.borderColor = resolvedCGColor(borderColor, for: view)
             layer.shadowColor = resolvedCGColor(shadowColor, for: view)
             layer.shadowOpacity = 1
             layer.shadowRadius = 8
