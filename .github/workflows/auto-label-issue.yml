@@ -35,8 +35,8 @@ jobs:
               platform: {
                 title: "Affected Platform",
                 values: {
-                  macos: "macos",
-                  windows: "windows"
+                  macos: "macOS",
+                  windows: "Windows"
                 }
               },
               reportType: {
@@ -62,7 +62,7 @@ jobs:
             }
 
             if (!desiredLabels.length) {
-              core.info("No matching labels found from issue form.");
+              console.info("No matching labels found from issue form.");
               return;
             }
 
@@ -77,17 +77,30 @@ jobs:
               github.rest.issues.listLabelsForRepo,
               { owner, repo, per_page: 100 }
             );
-            const existingNames = new Set(existingLabels.map((l) => l.name));
+            const existingNames = new Set(
+              existingLabels.map((l) => l.name.toLowerCase())
+            );
 
             for (const name of desiredLabels) {
-              if (!existingNames.has(name)) {
-                await github.rest.issues.createLabel({
-                  owner,
-                  repo,
-                  name,
-                  color: labelColors[name] || "BFDADC",
-                  description: "Auto-applied from issue form"
-                });
+              if (!existingNames.has(name.toLowerCase())) {
+                try {
+                  await github.rest.issues.createLabel({
+                    owner,
+                    repo,
+                    name,
+                    color: labelColors[name] || "BFDADC",
+                    description: "Auto-applied from issue form"
+                  });
+                } catch (error) {
+                  if (
+                    error?.status === 422 &&
+                    error?.message?.includes("already_exists")
+                  ) {
+                    console.info(`Label already exists: ${name}`);
+                    continue;
+                  }
+                  throw error;
+                }
               }
             }
 
