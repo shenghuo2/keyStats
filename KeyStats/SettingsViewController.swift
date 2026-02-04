@@ -1,14 +1,29 @@
 import Cocoa
 import PostHog
 
-class SettingsViewController: NSViewController, NSTextFieldDelegate {
+private func resolvedCGColor(_ color: NSColor, for view: NSView) -> CGColor {
+    var resolved: CGColor = color.cgColor
+    view.effectiveAppearance.performAsCurrentDrawingAppearance {
+        resolved = color.cgColor
+    }
+    return resolved
+}
+
+final class SettingsViewController: NSViewController, NSTextFieldDelegate {
+
+    private var scrollView: NSScrollView!
+    private var documentView: NSView!
+    private var contentStack: NSStackView!
 
     private var appIconView: NSImageView!
-    private var showKeyPressesButton: NSButton!
-    private var showMouseClicksButton: NSButton!
-    private var appStatsEnabledButton: NSButton!
-    private var launchAtLoginButton: NSButton!
-    private var dynamicIconColorButton: NSButton!
+    private var headerTitleLabel: NSTextField!
+    private var headerSubtitleLabel: NSTextField!
+
+    private var showKeyPressesButton: NSSwitch!
+    private var showMouseClicksButton: NSSwitch!
+    private var appStatsEnabledButton: NSSwitch!
+    private var launchAtLoginButton: NSSwitch!
+    private var dynamicIconColorButton: NSSwitch!
     private var dynamicIconColorStylePopUp: NSPopUpButton!
     private var dynamicIconColorStyleRow: NSStackView!
     private var dynamicIconColorWindowField: NSTextField!
@@ -23,12 +38,18 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
     private var resetButton: NSButton!
     private var exportButton: NSButton!
     private var mouseDistanceCalibrationButton: NSButton!
-    private var showThresholdsButton: NSButton!
+    private var showThresholdsButton: NSSwitch!
     private var thresholdStack: NSStackView!
     private var keyPressThresholdField: NSTextField!
     private var keyPressThresholdStepper: NSStepper!
     private var clickThresholdField: NSTextField!
     private var clickThresholdStepper: NSStepper!
+    private var dynamicIconOptionsContainer: NSStackView!
+    private var notificationThresholdContainer: NSStackView!
+
+    private var cardViews: [NSView] = []
+    private var dividerViews: [NSView] = []
+    private var optionDividerViews: [NSView] = []
 
     private let thresholdMinimum = 0
     private let thresholdMaximum = 1_000_000
@@ -43,7 +64,7 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
         formatter.maximum = NSNumber(value: thresholdMaximum)
         return formatter
     }()
-    
+
     private lazy var windowFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.numberStyle = .none
@@ -64,8 +85,12 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
     // MARK: - Lifecycle
 
     override func loadView() {
-        let mainView = NSView(frame: NSRect(x: 0, y: 0, width: 360, height: 400))
+        let mainView = AppearanceTrackingView(frame: NSRect(x: 0, y: 0, width: 520, height: 680))
+        mainView.onEffectiveAppearanceChange = { [weak self] in
+            self?.updateAppearance()
+        }
         mainView.wantsLayer = true
+        mainView.layer?.backgroundColor = resolvedCGColor(NSColor.windowBackgroundColor, for: mainView)
         view = mainView
     }
 
@@ -73,6 +98,7 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
         super.viewDidLoad()
         setupUI()
         updateState()
+        updateAppearance()
     }
 
     override func viewWillAppear() {
@@ -89,51 +115,80 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
     // MARK: - UI
 
     private func setupUI() {
+        scrollView = NSScrollView()
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.drawsBackground = false
+        scrollView.hasVerticalScroller = true
+        view.addSubview(scrollView)
+
+        documentView = NSView()
+        documentView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.documentView = documentView
+
+        contentStack = NSStackView()
+        contentStack.orientation = .vertical
+        contentStack.alignment = .leading
+        contentStack.spacing = 16
+        contentStack.translatesAutoresizingMaskIntoConstraints = false
+        documentView.addSubview(contentStack)
+
         appIconView = NSImageView()
         appIconView.image = NSImage(named: "AppIcon") ?? NSApp.applicationIconImage
         appIconView.imageScaling = .scaleProportionallyUpOrDown
         appIconView.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(appIconView)
+        appIconView.widthAnchor.constraint(equalToConstant: 44).isActive = true
+        appIconView.heightAnchor.constraint(equalToConstant: 44).isActive = true
 
-        showKeyPressesButton = NSButton(checkboxWithTitle: NSLocalizedString("setting.showKeyPresses", comment: ""),
-                                        target: self,
-                                        action: #selector(toggleShowKeyPresses))
+        headerTitleLabel = NSTextField(labelWithString: NSLocalizedString("settings.windowTitle", comment: ""))
+        headerTitleLabel.font = NSFont.systemFont(ofSize: 18, weight: .semibold)
 
-        showMouseClicksButton = NSButton(checkboxWithTitle: NSLocalizedString("setting.showMouseClicks", comment: ""),
-                                         target: self,
-                                         action: #selector(toggleShowMouseClicks))
+        headerSubtitleLabel = NSTextField(labelWithString: NSLocalizedString("settings.header.subtitle", comment: ""))
+        headerSubtitleLabel.font = NSFont.systemFont(ofSize: 12)
+        headerSubtitleLabel.textColor = .secondaryLabelColor
 
-        appStatsEnabledButton = NSButton(checkboxWithTitle: NSLocalizedString("setting.appStatsEnabled", comment: ""),
-                                         target: self,
-                                         action: #selector(toggleAppStatsEnabled))
+        let headerTextStack = NSStackView(views: [headerTitleLabel, headerSubtitleLabel])
+        headerTextStack.orientation = .vertical
+        headerTextStack.alignment = .leading
+        headerTextStack.spacing = 2
+        headerTextStack.translatesAutoresizingMaskIntoConstraints = false
 
-        launchAtLoginButton = NSButton(checkboxWithTitle: NSLocalizedString("button.launchAtLogin", comment: ""),
-                                       target: self,
-                                       action: #selector(toggleLaunchAtLogin))
+        let headerStack = NSStackView(views: [appIconView, headerTextStack])
+        headerStack.orientation = .horizontal
+        headerStack.alignment = .centerY
+        headerStack.spacing = 12
+        addArrangedSubviewFillingWidth(headerStack, to: contentStack)
+        contentStack.setCustomSpacing(20, after: headerStack)
 
-        showThresholdsButton = NSButton(checkboxWithTitle: NSLocalizedString("setting.notificationsEnabled", comment: ""),
-                                        target: self,
-                                        action: #selector(toggleShowThresholds))
-
-        dynamicIconColorButton = NSButton(checkboxWithTitle: NSLocalizedString("settings.dynamicIconColor", comment: ""),
-                                          target: self,
-                                          action: #selector(toggleDynamicIconColor))
+        showKeyPressesButton = makeSwitch(action: #selector(toggleShowKeyPresses))
+        showMouseClicksButton = makeSwitch(action: #selector(toggleShowMouseClicks))
+        appStatsEnabledButton = makeSwitch(action: #selector(toggleAppStatsEnabled))
+        launchAtLoginButton = makeSwitch(action: #selector(toggleLaunchAtLogin))
+        showThresholdsButton = makeSwitch(action: #selector(toggleShowThresholds))
+        dynamicIconColorButton = makeSwitch(action: #selector(toggleDynamicIconColor))
 
         dynamicIconColorHelpButton = NSButton()
         dynamicIconColorHelpButton.bezelStyle = .helpButton
         dynamicIconColorHelpButton.title = ""
         dynamicIconColorHelpButton.controlSize = .mini
         dynamicIconColorHelpButton.translatesAutoresizingMaskIntoConstraints = false
-        dynamicIconColorHelpButton.widthAnchor.constraint(equalToConstant: 12).isActive = true
-        dynamicIconColorHelpButton.heightAnchor.constraint(equalToConstant: 12).isActive = true
+        dynamicIconColorHelpButton.widthAnchor.constraint(equalToConstant: 14).isActive = true
+        dynamicIconColorHelpButton.heightAnchor.constraint(equalToConstant: 14).isActive = true
 
-        let dynamicIconColorRow = NSStackView(views: [dynamicIconColorButton, dynamicIconColorHelpButton])
-        dynamicIconColorRow.orientation = .horizontal
-        dynamicIconColorRow.alignment = .centerY
-        dynamicIconColorRow.spacing = 6
-        dynamicIconColorRow.translatesAutoresizingMaskIntoConstraints = false
+        let menuBarStack = makeOptionSeparatedStack([
+            makeSwitchRow(titleKey: "setting.showKeyPresses", toggle: showKeyPressesButton),
+            makeSwitchRow(titleKey: "setting.showMouseClicks", toggle: showMouseClicksButton)
+        ])
+
+        let menuBarSection = makeSection(titleKey: "settings.section.menuBar", content: menuBarStack)
+        addArrangedSubviewFillingWidth(menuBarSection, to: contentStack)
+
+        let dynamicIconRow = makeSwitchRow(titleKey: "settings.dynamicIconColor",
+                                           toggle: dynamicIconColorButton,
+                                           accessory: dynamicIconColorHelpButton)
 
         dynamicIconColorStylePopUp = NSPopUpButton()
+        dynamicIconColorStylePopUp.controlSize = .small
+        dynamicIconColorStylePopUp.font = NSFont.systemFont(ofSize: 12)
         let iconStyleTitle = NSLocalizedString("settings.dynamicIconColorStyle.icon", comment: "")
         let dotStyleTitle = NSLocalizedString("settings.dynamicIconColorStyle.dot", comment: "")
         dynamicIconColorStylePopUp.addItems(withTitles: [iconStyleTitle, dotStyleTitle])
@@ -142,39 +197,47 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
         dynamicIconColorStylePopUp.target = self
         dynamicIconColorStylePopUp.action = #selector(dynamicIconColorStyleChanged)
 
-        let styleLabel = NSTextField(labelWithString: NSLocalizedString("settings.dynamicIconColorStyle", comment: ""))
-        styleLabel.font = NSFont.systemFont(ofSize: 13)
-        let styleRow = NSStackView(views: [styleLabel, dynamicIconColorStylePopUp])
-        styleRow.orientation = .horizontal
-        styleRow.alignment = .centerY
-        styleRow.spacing = 8
-        styleRow.translatesAutoresizingMaskIntoConstraints = false
+        let styleRow = makeLabeledRow(title: NSLocalizedString("settings.dynamicIconColorStyle", comment: ""),
+                                      control: dynamicIconColorStylePopUp)
         dynamicIconColorStyleRow = styleRow
 
-        let windowLabel = NSTextField(labelWithString: NSLocalizedString("settings.dynamicIconColorWindow", comment: ""))
-        windowLabel.font = NSFont.systemFont(ofSize: 13)
-        
         dynamicIconColorWindowField = NSTextField()
+        dynamicIconColorWindowField.controlSize = .small
+        dynamicIconColorWindowField.font = NSFont.systemFont(ofSize: 12)
         dynamicIconColorWindowField.formatter = windowFormatter
         dynamicIconColorWindowField.target = self
         dynamicIconColorWindowField.action = #selector(dynamicIconColorWindowChanged)
         dynamicIconColorWindowField.delegate = self
         dynamicIconColorWindowField.translatesAutoresizingMaskIntoConstraints = false
-        dynamicIconColorWindowField.widthAnchor.constraint(equalToConstant: 50).isActive = true
-        
-        let windowRow = NSStackView(views: [windowLabel, dynamicIconColorWindowField])
-        windowRow.orientation = .horizontal
-        windowRow.alignment = .centerY
-        windowRow.spacing = 8
-        windowRow.translatesAutoresizingMaskIntoConstraints = false
+        dynamicIconColorWindowField.widthAnchor.constraint(equalToConstant: 56).isActive = true
+
+        let windowRow = makeLabeledRow(title: NSLocalizedString("settings.dynamicIconColorWindow", comment: ""),
+                                       control: dynamicIconColorWindowField)
         dynamicIconColorWindowRow = windowRow
 
-        let optionsStack = NSStackView(views: [showKeyPressesButton, showMouseClicksButton, appStatsEnabledButton, launchAtLoginButton, dynamicIconColorRow, styleRow, windowRow, showThresholdsButton])
-        optionsStack.orientation = .vertical
-        optionsStack.alignment = .leading
-        optionsStack.spacing = 8
-        optionsStack.translatesAutoresizingMaskIntoConstraints = false
- 
+        let dynamicSubStack = makeOptionSeparatedStack([
+            dynamicIconColorStyleRow,
+            dynamicIconColorWindowRow
+        ], spacing: 6)
+        let dynamicIndentedStack = makeIndentedContainer(dynamicSubStack, indent: 22)
+
+        let trackingStack = makeVerticalStack(spacing: 8)
+        let appStatsRow = makeSwitchRow(titleKey: "setting.appStatsEnabled", toggle: appStatsEnabledButton)
+        let launchRow = makeSwitchRow(titleKey: "button.launchAtLogin", toggle: launchAtLoginButton)
+        addArrangedSubviewFillingWidth(appStatsRow, to: trackingStack)
+        addArrangedSubviewFillingWidth(makeOptionDividerContainer(), to: trackingStack)
+        addArrangedSubviewFillingWidth(launchRow, to: trackingStack)
+        addArrangedSubviewFillingWidth(makeOptionDividerContainer(), to: trackingStack)
+        addArrangedSubviewFillingWidth(dynamicIconRow, to: trackingStack)
+
+        dynamicIconOptionsContainer = makeVerticalStack(spacing: 6)
+        addArrangedSubviewFillingWidth(makeOptionDividerContainer(), to: dynamicIconOptionsContainer)
+        addArrangedSubviewFillingWidth(dynamicIndentedStack, to: dynamicIconOptionsContainer)
+        addArrangedSubviewFillingWidth(dynamicIconOptionsContainer, to: trackingStack)
+
+        let trackingSection = makeSection(titleKey: "settings.section.tracking", content: trackingStack)
+        addArrangedSubviewFillingWidth(trackingSection, to: contentStack)
+
         keyPressThresholdField = makeThresholdField()
         keyPressThresholdStepper = makeThresholdStepper(action: #selector(keyPressThresholdStepperChanged))
         clickThresholdField = makeThresholdField()
@@ -191,56 +254,258 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
             stepper: clickThresholdStepper
         )
 
-        thresholdStack = NSStackView(views: [keyThresholdRow, clickThresholdRow])
-        thresholdStack.orientation = .vertical
-        thresholdStack.alignment = .leading
-        thresholdStack.spacing = 6
-        thresholdStack.translatesAutoresizingMaskIntoConstraints = false
-        
-        mouseDistanceCalibrationButton = NSButton(title: NSLocalizedString("settings.mouseDistanceCalibration", comment: ""), target: self, action: #selector(calibrateMouseDistance))
+        thresholdStack = makeOptionSeparatedStack([
+            keyThresholdRow,
+            clickThresholdRow
+        ], spacing: 6)
+
+        let notificationStack = makeVerticalStack(spacing: 8)
+        addArrangedSubviewFillingWidth(makeSwitchRow(titleKey: "setting.notificationsEnabled", toggle: showThresholdsButton), to: notificationStack)
+        let thresholdIndentStack = makeIndentedContainer(thresholdStack, indent: 22)
+        notificationThresholdContainer = makeVerticalStack(spacing: 6)
+        addArrangedSubviewFillingWidth(makeOptionDividerContainer(), to: notificationThresholdContainer)
+        addArrangedSubviewFillingWidth(thresholdIndentStack, to: notificationThresholdContainer)
+        addArrangedSubviewFillingWidth(notificationThresholdContainer, to: notificationStack)
+
+        let notificationSection = makeSection(titleKey: "settings.section.notifications", content: notificationStack)
+        addArrangedSubviewFillingWidth(notificationSection, to: contentStack)
+
+        mouseDistanceCalibrationButton = NSButton(title: NSLocalizedString("settings.mouseDistanceCalibration", comment: ""),
+                                                  target: self,
+                                                  action: #selector(calibrateMouseDistance))
         mouseDistanceCalibrationButton.bezelStyle = .rounded
         mouseDistanceCalibrationButton.controlSize = .regular
 
-        resetButton = NSButton(title: NSLocalizedString("button.reset", comment: ""), target: self, action: #selector(resetStats))
-        resetButton.bezelStyle = .rounded
-        resetButton.controlSize = .regular
-
-        exportButton = NSButton(title: NSLocalizedString("button.exportData", comment: ""), target: self, action: #selector(exportData))
+        exportButton = NSButton(title: NSLocalizedString("button.exportData", comment: ""),
+                                target: self,
+                                action: #selector(exportData))
         exportButton.bezelStyle = .rounded
         exportButton.controlSize = .regular
 
-        let calibrationRow = NSStackView(views: [mouseDistanceCalibrationButton])
-        calibrationRow.orientation = .horizontal
-        calibrationRow.alignment = .centerY
-        calibrationRow.spacing = 8
-        calibrationRow.translatesAutoresizingMaskIntoConstraints = false
+        resetButton = NSButton(title: NSLocalizedString("button.reset", comment: ""),
+                               target: self,
+                               action: #selector(resetStats))
+        resetButton.bezelStyle = .rounded
+        resetButton.controlSize = .regular
+        resetButton.bezelColor = nil
+        resetButton.contentTintColor = nil
 
-        let actionRow = NSStackView(views: [resetButton, exportButton])
-        actionRow.orientation = .horizontal
-        actionRow.alignment = .centerY
-        actionRow.spacing = 8
-        actionRow.distribution = .fillProportionally
-        actionRow.translatesAutoresizingMaskIntoConstraints = false
+        let actionStack = NSStackView(views: [mouseDistanceCalibrationButton, exportButton, resetButton])
+        actionStack.orientation = .horizontal
+        actionStack.alignment = .centerY
+        actionStack.spacing = 10
 
-        let contentStack = NSStackView(views: [optionsStack, thresholdStack, calibrationRow, actionRow])
-        contentStack.orientation = .vertical
-        contentStack.alignment = .leading
-        contentStack.spacing = 16
-        contentStack.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(contentStack)
+        let actionSection = makeSection(titleKey: "settings.section.data", content: actionStack)
+        addArrangedSubviewFillingWidth(actionSection, to: contentStack)
 
+        let bottomSpacer = NSView()
+        bottomSpacer.translatesAutoresizingMaskIntoConstraints = false
+        bottomSpacer.setContentHuggingPriority(.init(1), for: .vertical)
+        contentStack.addArrangedSubview(bottomSpacer)
+        contentStack.setCustomSpacing(0, after: actionSection)
 
         NSLayoutConstraint.activate([
-            appIconView.topAnchor.constraint(equalTo: view.topAnchor, constant: 16),
-            appIconView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            appIconView.widthAnchor.constraint(equalToConstant: 48),
-            appIconView.heightAnchor.constraint(equalToConstant: 48),
+            scrollView.topAnchor.constraint(equalTo: view.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
 
-            contentStack.topAnchor.constraint(equalTo: appIconView.bottomAnchor, constant: 12),
-            contentStack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            contentStack.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -16),
-            contentStack.bottomAnchor.constraint(lessThanOrEqualTo: view.bottomAnchor, constant: -16)
+            documentView.leadingAnchor.constraint(equalTo: scrollView.contentView.leadingAnchor),
+            documentView.trailingAnchor.constraint(equalTo: scrollView.contentView.trailingAnchor),
+            documentView.topAnchor.constraint(equalTo: scrollView.contentView.topAnchor),
+            documentView.bottomAnchor.constraint(greaterThanOrEqualTo: scrollView.contentView.bottomAnchor),
+            documentView.widthAnchor.constraint(equalTo: scrollView.widthAnchor),
+
+            contentStack.topAnchor.constraint(equalTo: documentView.topAnchor, constant: 20),
+            contentStack.leadingAnchor.constraint(equalTo: documentView.leadingAnchor, constant: 20),
+            contentStack.trailingAnchor.constraint(equalTo: documentView.trailingAnchor, constant: -20),
+            contentStack.bottomAnchor.constraint(equalTo: documentView.bottomAnchor, constant: -24)
         ])
+    }
+
+    private func makeSection(titleKey: String, content: NSView) -> NSView {
+        let titleLabel = makeSectionTitleLabel(NSLocalizedString(titleKey, comment: ""))
+
+        let card = NSView()
+        card.translatesAutoresizingMaskIntoConstraints = false
+        card.wantsLayer = true
+        content.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(content)
+
+        NSLayoutConstraint.activate([
+            content.topAnchor.constraint(equalTo: card.topAnchor, constant: 10),
+            content.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 10),
+            content.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -10),
+            content.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -10)
+        ])
+
+        cardViews.append(card)
+
+        let wrapper = makeVerticalStack(spacing: 6)
+        wrapper.addArrangedSubview(titleLabel)
+        addArrangedSubviewFillingWidth(card, to: wrapper)
+
+        return wrapper
+    }
+
+    private func makeSectionTitleLabel(_ text: String) -> NSTextField {
+        let label = NSTextField(labelWithString: text)
+        label.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        label.textColor = .labelColor
+        return label
+    }
+
+    private func makeDivider() -> NSView {
+        let divider = NSView()
+        divider.wantsLayer = true
+        divider.translatesAutoresizingMaskIntoConstraints = false
+        return divider
+    }
+
+    private func makeOptionDivider() -> NSView {
+        let divider = NSView()
+        divider.wantsLayer = true
+        divider.translatesAutoresizingMaskIntoConstraints = false
+        divider.heightAnchor.constraint(equalToConstant: 0.5).isActive = true
+        optionDividerViews.append(divider)
+        return divider
+    }
+
+    private func makeOptionDividerContainer(inset: CGFloat = 0) -> NSView {
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        let divider = makeOptionDivider()
+        container.addSubview(divider)
+        NSLayoutConstraint.activate([
+            divider.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: inset),
+            divider.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            divider.topAnchor.constraint(equalTo: container.topAnchor),
+            divider.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+        ])
+        return container
+    }
+
+    private func makeRowLabel(_ text: String) -> NSTextField {
+        let label = NSTextField(labelWithString: text)
+        label.font = NSFont.systemFont(ofSize: 13)
+        return label
+    }
+
+    private func makeSwitch(action: Selector) -> NSSwitch {
+        let toggle = NSSwitch()
+        toggle.controlSize = .small
+        toggle.target = self
+        toggle.action = action
+        toggle.translatesAutoresizingMaskIntoConstraints = false
+        return toggle
+    }
+
+    private func makeSwitchRow(titleKey: String, toggle: NSSwitch, accessory: NSView? = nil) -> NSStackView {
+        let label = makeRowLabel(NSLocalizedString(titleKey, comment: ""))
+        toggle.setAccessibilityLabel(label.stringValue)
+
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        let row: NSStackView
+        if let accessory = accessory {
+            let leadingStack = NSStackView(views: [label, accessory])
+            leadingStack.orientation = .horizontal
+            leadingStack.alignment = .centerY
+            leadingStack.spacing = 6
+
+            row = NSStackView(views: [leadingStack, spacer, toggle])
+        } else {
+            row = NSStackView(views: [label, spacer, toggle])
+        }
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.spacing = 12
+        row.translatesAutoresizingMaskIntoConstraints = false
+        return row
+    }
+
+    private func makeLabeledRow(title: String, control: NSView) -> NSStackView {
+        let label = makeRowLabel(title)
+
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        let row = NSStackView(views: [label, spacer, control])
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.spacing = 12
+        row.translatesAutoresizingMaskIntoConstraints = false
+        return row
+    }
+
+    private func makeIndentedContainer(_ content: NSView, indent: CGFloat) -> NSView {
+        let container = NSView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(content)
+        content.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            content.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: indent),
+            content.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            content.topAnchor.constraint(equalTo: container.topAnchor),
+            content.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+        ])
+        return container
+    }
+
+    private func makeVerticalStack(spacing: CGFloat = 10) -> NSStackView {
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = spacing
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        return stack
+    }
+
+    private func makeOptionSeparatedStack(_ rows: [NSView], spacing: CGFloat = 8) -> NSStackView {
+        let stack = makeVerticalStack(spacing: spacing)
+        for (index, row) in rows.enumerated() {
+            addArrangedSubviewFillingWidth(row, to: stack)
+            if index < rows.count - 1 {
+                addArrangedSubviewFillingWidth(makeOptionDividerContainer(), to: stack)
+            }
+        }
+        return stack
+    }
+
+    private func addArrangedSubviewFillingWidth(_ view: NSView, to stack: NSStackView) {
+        stack.addArrangedSubview(view)
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+    }
+
+    private func updateAppearance() {
+        view.layer?.backgroundColor = resolvedCGColor(NSColor.windowBackgroundColor, for: view)
+        let cardBackground = NSColor(calibratedRed: 0.9686, green: 0.9686, blue: 0.9686, alpha: 1.0)
+        let shadowColor = NSColor.black.withAlphaComponent(0.07)
+        let dividerColor = NSColor.separatorColor.withAlphaComponent(0.12)
+        let optionDividerColor = NSColor.separatorColor.withAlphaComponent(0.14)
+
+        for card in cardViews {
+            guard let layer = card.layer else { continue }
+            layer.cornerRadius = 12
+            layer.backgroundColor = resolvedCGColor(cardBackground, for: view)
+            layer.borderWidth = 0
+            layer.shadowColor = resolvedCGColor(shadowColor, for: view)
+            layer.shadowOpacity = 1
+            layer.shadowRadius = 8
+            layer.shadowOffset = NSSize(width: 0, height: -1)
+        }
+
+        for divider in dividerViews {
+            divider.layer?.backgroundColor = resolvedCGColor(dividerColor, for: view)
+        }
+
+        for divider in optionDividerViews {
+            divider.layer?.backgroundColor = resolvedCGColor(optionDividerColor, for: view)
+        }
     }
 
     // MARK: - State
@@ -254,7 +519,7 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
         updateDynamicIconColorStyleSelection()
         let notificationsEnabled = StatsManager.shared.notificationsEnabled
         showThresholdsButton.state = notificationsEnabled ? .on : .off
-        thresholdStack.isHidden = !notificationsEnabled
+        notificationThresholdContainer.isHidden = !notificationsEnabled
         updateThresholdUI()
     }
 
@@ -266,9 +531,9 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
         }
         let isEnabled = StatsManager.shared.enableDynamicIconColor
         dynamicIconColorStylePopUp.isEnabled = isEnabled
-        dynamicIconColorStyleRow.isHidden = !isEnabled
-        
-        dynamicIconColorWindowRow.isHidden = !isEnabled
+        dynamicIconColorStyleRow.isHidden = false
+        dynamicIconColorWindowRow.isHidden = false
+        dynamicIconOptionsContainer.isHidden = !isEnabled
         dynamicIconColorWindowField.doubleValue = StatsManager.shared.dynamicIconColorWindow
     }
 
@@ -428,6 +693,8 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
 
     private func makeThresholdField() -> NSTextField {
         let field = NSTextField()
+        field.controlSize = .small
+        field.font = NSFont.systemFont(ofSize: 12)
         field.alignment = .right
         field.formatter = thresholdFormatter
         field.target = self
@@ -438,6 +705,7 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
 
     private func makeThresholdStepper(action: Selector) -> NSStepper {
         let stepper = NSStepper()
+        stepper.controlSize = .small
         stepper.minValue = Double(thresholdMinimum)
         stepper.maxValue = Double(thresholdMaximum)
         stepper.increment = thresholdStep
@@ -458,10 +726,19 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
 
         field.widthAnchor.constraint(equalToConstant: 72).isActive = true
 
-        let row = NSStackView(views: [titleLabel, field, unitLabel, stepper])
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        let trailingStack = NSStackView(views: [field, unitLabel, stepper])
+        trailingStack.orientation = .horizontal
+        trailingStack.alignment = .centerY
+        trailingStack.spacing = 6
+
+        let row = NSStackView(views: [titleLabel, spacer, trailingStack])
         row.orientation = .horizontal
         row.alignment = .centerY
-        row.spacing = 8
+        row.spacing = 12
         row.translatesAutoresizingMaskIntoConstraints = false
         return row
     }
@@ -541,7 +818,7 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
     @objc private func toggleShowThresholds() {
         let enabled = showThresholdsButton.state == .on
         StatsManager.shared.notificationsEnabled = enabled
-        thresholdStack.isHidden = !enabled
+        notificationThresholdContainer.isHidden = !enabled
         if enabled {
             requestNotificationPermissionIfNeeded()
         }

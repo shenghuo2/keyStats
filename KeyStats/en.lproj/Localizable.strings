@@ -5,6 +5,11 @@
 "button.permission" = "Permissions";
 "button.launchAtLogin" = "Open at Login";
 "settings.title" = "Settings";
+"settings.header.subtitle" = "Simple, private controls for your menu bar.";
+"settings.section.menuBar" = "Menu Bar";
+"settings.section.tracking" = "Tracking";
+"settings.section.notifications" = "Notifications";
+"settings.section.data" = "Data";
 "settings.dynamicIconColor" = "Enable Dynamic Icon Color";
 "settings.dynamicIconColorStyle" = "Display When Enabled";
 "settings.dynamicIconColorStyle.icon" = "Tint Icon";

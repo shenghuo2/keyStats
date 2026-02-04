@@ -5,6 +5,11 @@
 "button.permission" = "获取权限";
 "button.launchAtLogin" = "开机启动";
 "settings.title" = "设置";
+"settings.header.subtitle" = "简洁、隐私优先的菜单栏控制";
+"settings.section.menuBar" = "菜单栏";
+"settings.section.tracking" = "统计";
+"settings.section.notifications" = "通知";
+"settings.section.data" = "数据";
 "settings.dynamicIconColor" = "启用动态图标颜色";
 "settings.dynamicIconColorStyle" = "启用后显示方式";
 "settings.dynamicIconColorStyle.icon" = "图标着色";
