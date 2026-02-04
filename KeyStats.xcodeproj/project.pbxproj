@@ -30,6 +30,8 @@
 		A1000024 /* AppStatsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000024 /* AppStatsWindowController.swift */; };
 		A1000025 /* AppStatsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000025 /* AppStatsViewController.swift */; };
 		A1000026 /* ActivityHeatmapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000026 /* ActivityHeatmapView.swift */; };
+		A1000027 /* MouseDistanceCalibrationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000027 /* MouseDistanceCalibrationViewController.swift */; };
+		A1000028 /* MouseDistanceCalibrationWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000028 /* MouseDistanceCalibrationWindowController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -56,6 +58,8 @@
 		A2000024 /* AppStatsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStatsWindowController.swift; sourceTree = "<group>"; };
 		A2000025 /* AppStatsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppStatsViewController.swift; sourceTree = "<group>"; };
 		A2000026 /* ActivityHeatmapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityHeatmapView.swift; sourceTree = "<group>"; };
+		A2000027 /* MouseDistanceCalibrationViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MouseDistanceCalibrationViewController.swift; sourceTree = "<group>"; };
+		A2000028 /* MouseDistanceCalibrationWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MouseDistanceCalibrationWindowController.swift; sourceTree = "<group>"; };
 		A3000001 /* KeyStats.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KeyStats.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A3000002 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A3000003 /* KeyStats.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = KeyStats.entitlements; sourceTree = "<group>"; };
@@ -99,6 +103,8 @@
 				A2000017 /* NotificationManager.swift */,
 				A2000014 /* SettingsViewController.swift */,
 				A2000015 /* SettingsWindowController.swift */,
+				A2000027 /* MouseDistanceCalibrationViewController.swift */,
+				A2000028 /* MouseDistanceCalibrationWindowController.swift */,
 				A2000020 /* AllTimeStatsWindowController.swift */,
 				A2000026 /* ActivityHeatmapView.swift */,
 				A2000021 /* AllTimeStatsViewController.swift */,
@@ -209,6 +215,8 @@
 				A1000011 /* LaunchAtLoginManager.swift in Sources */,
 				A1000012 /* SettingsViewController.swift in Sources */,
 				A1000013 /* SettingsWindowController.swift in Sources */,
+				A1000027 /* MouseDistanceCalibrationViewController.swift in Sources */,
+				A1000028 /* MouseDistanceCalibrationWindowController.swift in Sources */,
 				A1000020 /* AllTimeStatsWindowController.swift in Sources */,
 				A1000021 /* AllTimeStatsViewController.swift in Sources */,
 				A1000026 /* ActivityHeatmapView.swift in Sources */,

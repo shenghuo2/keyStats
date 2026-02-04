@@ -22,6 +22,7 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
     private var isHoveringHelpPopover = false
     private var resetButton: NSButton!
     private var exportButton: NSButton!
+    private var mouseDistanceCalibrationButton: NSButton!
     private var showThresholdsButton: NSButton!
     private var thresholdStack: NSStackView!
     private var keyPressThresholdField: NSTextField!
@@ -63,7 +64,7 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
     // MARK: - Lifecycle
 
     override func loadView() {
-        let mainView = NSView(frame: NSRect(x: 0, y: 0, width: 360, height: 360))
+        let mainView = NSView(frame: NSRect(x: 0, y: 0, width: 360, height: 400))
         mainView.wantsLayer = true
         view = mainView
     }
@@ -196,6 +197,10 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
         thresholdStack.spacing = 6
         thresholdStack.translatesAutoresizingMaskIntoConstraints = false
         
+        mouseDistanceCalibrationButton = NSButton(title: NSLocalizedString("settings.mouseDistanceCalibration", comment: ""), target: self, action: #selector(calibrateMouseDistance))
+        mouseDistanceCalibrationButton.bezelStyle = .rounded
+        mouseDistanceCalibrationButton.controlSize = .regular
+
         resetButton = NSButton(title: NSLocalizedString("button.reset", comment: ""), target: self, action: #selector(resetStats))
         resetButton.bezelStyle = .rounded
         resetButton.controlSize = .regular
@@ -204,6 +209,12 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
         exportButton.bezelStyle = .rounded
         exportButton.controlSize = .regular
 
+        let calibrationRow = NSStackView(views: [mouseDistanceCalibrationButton])
+        calibrationRow.orientation = .horizontal
+        calibrationRow.alignment = .centerY
+        calibrationRow.spacing = 8
+        calibrationRow.translatesAutoresizingMaskIntoConstraints = false
+
         let actionRow = NSStackView(views: [resetButton, exportButton])
         actionRow.orientation = .horizontal
         actionRow.alignment = .centerY
@@ -211,7 +222,7 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
         actionRow.distribution = .fillProportionally
         actionRow.translatesAutoresizingMaskIntoConstraints = false
 
-        let contentStack = NSStackView(views: [optionsStack, thresholdStack, actionRow])
+        let contentStack = NSStackView(views: [optionsStack, thresholdStack, calibrationRow, actionRow])
         contentStack.orientation = .vertical
         contentStack.alignment = .leading
         contentStack.spacing = 16
@@ -569,6 +580,10 @@ class SettingsViewController: NSViewController, NSTextFieldDelegate {
             updateState()
             showLaunchAtLoginError()
         }
+    }
+
+    @objc private func calibrateMouseDistance() {
+        MouseDistanceCalibrationWindowController.shared.show()
     }
 
     @objc private func resetStats() {

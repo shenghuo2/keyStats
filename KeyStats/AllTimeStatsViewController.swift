@@ -481,7 +481,7 @@ class AllTimeStatsViewController: NSViewController {
         )
         
         // Marathon Mouse (42.195 km = 42195 m)
-        let metersPerPixel = 0.000264583
+        let metersPerPixel = StatsManager.shared.mouseDistanceMetersPerPixel
         let totalMeters = stats.totalMouseDistance * metersPerPixel
         let marathons = totalMeters / 42195.0
         let marathonStr = String(format: NSLocalizedString("insights.marathon", comment: ""), marathons)

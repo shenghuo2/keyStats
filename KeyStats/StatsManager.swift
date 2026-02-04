@@ -2,7 +2,7 @@ import Foundation
 import Cocoa
 import UserNotifications
 
-private let metersPerPixel: Double = 0.000264583
+private let baseMetersPerPixel: Double = 0.000264583
 
 private func baseKeyComponent(_ keyName: String) -> String {
     let trimmed = keyName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -115,13 +115,7 @@ struct DailyStats: Codable {
     
     /// 格式化鼠标移动距离
     var formattedMouseDistance: String {
-        let meters = mouseDistance * metersPerPixel
-        if meters >= 1000 {
-            return String(format: "%.2f km", meters / 1000)
-        } else if mouseDistance >= 1000 {
-            return String(format: "%.1f m", meters)
-        }
-        return String(format: "%.0f px", mouseDistance)
+        return StatsManager.shared.formatMouseDistance(mouseDistance)
     }
     
     /// 格式化滚动距离
@@ -177,13 +171,7 @@ struct AllTimeStats {
     
     /// 格式化鼠标移动距离
     var formattedMouseDistance: String {
-        let meters = totalMouseDistance * 0.000264583 // metersPerPixel
-        if meters >= 1000 {
-            return String(format: "%.2f km", meters / 1000)
-        } else if totalMouseDistance >= 1000 {
-            return String(format: "%.1f m", meters)
-        }
-        return String(format: "%.0f px", totalMouseDistance)
+        return StatsManager.shared.formatMouseDistance(totalMouseDistance)
     }
     
     /// 格式化滚动距离
@@ -220,6 +208,11 @@ struct AllTimeStats {
 /// 统计数据管理器 - 单例模式
 class StatsManager {
     static let shared = StatsManager()
+
+    enum MouseDistanceCalibrationResult {
+        case success(pixels: Double, factor: Double)
+        case failure(pixels: Double)
+    }
     
     private let userDefaults = UserDefaults.standard
     private let statsKey = "dailyStats"
@@ -233,6 +226,7 @@ class StatsManager {
     private let enableDynamicIconColorKey = "enableDynamicIconColor"
     private let dynamicIconColorStyleKey = "dynamicIconColorStyle"
     private let dynamicIconColorWindowKey = "dynamicIconColorWindow"
+    private let mouseDistanceCalibrationFactorKey = "mouseDistanceCalibrationFactor"
     private let dateFormatter: DateFormatter
     private var history: [String: DailyStats] = [:]
     private var saveTimer: Timer?
@@ -261,6 +255,19 @@ class StatsManager {
     private(set) var currentIconTintColor: NSColor?
     var menuBarUpdateHandler: (() -> Void)?
     private var statsUpdateHandlers: [UUID: () -> Void] = [:]
+
+    private var cachedMouseDistanceCalibrationFactor: Double = 1.0
+    private let mouseDistanceCalibrationLock = NSLock()
+    private enum MouseDistanceCalibrationState {
+        case idle
+        case armed
+        case recording
+    }
+    private var mouseDistanceCalibrationState: MouseDistanceCalibrationState = .idle
+    private var mouseDistanceCalibrationPixels: Double = 0
+    private var mouseDistanceCalibrationTargetMeters: Double = 0
+    private var mouseDistanceCalibrationMinPixels: Double = 50
+    private var mouseDistanceCalibrationCompletion: ((MouseDistanceCalibrationResult) -> Void)?
     
     // Cache for All-Time Stats
     private var cachedHistoryStats: AllTimeStats?
@@ -367,6 +374,24 @@ class StatsManager {
         }
     }
 
+    /// 设置：鼠标距离校准系数（默认 1.0）
+    var mouseDistanceCalibrationFactor: Double {
+        get { cachedMouseDistanceCalibrationFactor }
+        set {
+            let clamped = max(0.01, newValue)
+            guard cachedMouseDistanceCalibrationFactor != clamped else { return }
+            cachedMouseDistanceCalibrationFactor = clamped
+            userDefaults.set(clamped, forKey: mouseDistanceCalibrationFactorKey)
+            notifyMenuBarUpdate()
+            notifyStatsUpdate()
+        }
+    }
+
+    /// 每像素对应的物理距离（米）
+    var mouseDistanceMetersPerPixel: Double {
+        return baseMetersPerPixel * mouseDistanceCalibrationFactor
+    }
+
     private var lastNotifiedKeyPresses: Int = 0
     private var lastNotifiedClicks: Int = 0
     
@@ -393,6 +418,8 @@ class StatsManager {
         keyPressNotifyThreshold = userDefaults.object(forKey: keyPressNotifyThresholdKey) as? Int ?? 1000
         clickNotifyThreshold = userDefaults.object(forKey: clickNotifyThresholdKey) as? Int ?? 1000
         enableDynamicIconColor = userDefaults.object(forKey: enableDynamicIconColorKey) as? Bool ?? false
+        let storedCalibration = userDefaults.double(forKey: mouseDistanceCalibrationFactorKey)
+        cachedMouseDistanceCalibrationFactor = storedCalibration > 0 ? storedCalibration : 1.0
 
         // 先初始化 currentStats 为默认值
         let calendar = Calendar.current
@@ -480,6 +507,101 @@ class StatsManager {
         ensureCurrentDay()
         currentStats.mouseDistance += distance
         scheduleDebouncedStatsUpdate()
+    }
+
+    func beginMouseDistanceCalibration(knownMeters: Double,
+                                       minPixels: Double = 50,
+                                       completion: @escaping (MouseDistanceCalibrationResult) -> Void) {
+        mouseDistanceCalibrationLock.lock()
+        mouseDistanceCalibrationTargetMeters = max(0, knownMeters)
+        mouseDistanceCalibrationMinPixels = max(0, minPixels)
+        mouseDistanceCalibrationCompletion = completion
+        mouseDistanceCalibrationState = .armed
+        mouseDistanceCalibrationPixels = 0
+        mouseDistanceCalibrationLock.unlock()
+        lastMousePosition = nil
+    }
+
+    func cancelMouseDistanceCalibration() {
+        mouseDistanceCalibrationLock.lock()
+        mouseDistanceCalibrationState = .idle
+        mouseDistanceCalibrationPixels = 0
+        mouseDistanceCalibrationTargetMeters = 0
+        mouseDistanceCalibrationCompletion = nil
+        mouseDistanceCalibrationLock.unlock()
+    }
+
+    func handleMouseDistanceCalibrationKeyPress() -> Bool {
+        var completion: ((MouseDistanceCalibrationResult) -> Void)?
+        var result: MouseDistanceCalibrationResult?
+
+        mouseDistanceCalibrationLock.lock()
+        switch mouseDistanceCalibrationState {
+        case .idle:
+            mouseDistanceCalibrationLock.unlock()
+            return false
+        case .armed:
+            mouseDistanceCalibrationState = .recording
+            mouseDistanceCalibrationPixels = 0
+            mouseDistanceCalibrationLock.unlock()
+            lastMousePosition = nil
+            return true
+        case .recording:
+            mouseDistanceCalibrationState = .idle
+            let pixels = mouseDistanceCalibrationPixels
+            let targetMeters = mouseDistanceCalibrationTargetMeters
+            let minPixels = mouseDistanceCalibrationMinPixels
+            completion = mouseDistanceCalibrationCompletion
+            mouseDistanceCalibrationCompletion = nil
+            mouseDistanceCalibrationPixels = 0
+            mouseDistanceCalibrationTargetMeters = 0
+            mouseDistanceCalibrationLock.unlock()
+
+            if targetMeters > 0, pixels >= minPixels {
+                let measuredMetersPerPixel = targetMeters / pixels
+                let factor = measuredMetersPerPixel / baseMetersPerPixel
+                mouseDistanceCalibrationFactor = factor
+                result = .success(pixels: pixels, factor: factor)
+            } else {
+                result = .failure(pixels: pixels)
+            }
+        }
+
+        if let completion = completion, let result = result {
+            DispatchQueue.main.async {
+                completion(result)
+            }
+        }
+        return true
+    }
+
+    func recordMouseDistanceCalibration(_ distance: Double) {
+        mouseDistanceCalibrationLock.lock()
+        if mouseDistanceCalibrationState == .recording {
+            mouseDistanceCalibrationPixels += distance
+        }
+        mouseDistanceCalibrationLock.unlock()
+    }
+
+    var isMouseDistanceCalibrating: Bool {
+        mouseDistanceCalibrationLock.lock()
+        let value = mouseDistanceCalibrationState == .recording
+        mouseDistanceCalibrationLock.unlock()
+        return value
+    }
+
+    var isMouseDistanceCalibrationActive: Bool {
+        mouseDistanceCalibrationLock.lock()
+        let value = mouseDistanceCalibrationState != .idle
+        mouseDistanceCalibrationLock.unlock()
+        return value
+    }
+
+    func currentMouseDistanceCalibrationPixels() -> Double {
+        mouseDistanceCalibrationLock.lock()
+        let pixels = mouseDistanceCalibrationPixels
+        mouseDistanceCalibrationLock.unlock()
+        return pixels
     }
     
     func addScrollDistance(_ distance: Double, appIdentity: AppIdentity? = nil) {
@@ -1019,8 +1141,8 @@ extension StatsManager {
         }
     }
     
-    private func formatMouseDistance(_ distance: Double) -> String {
-        let meters = distance * metersPerPixel
+    func formatMouseDistance(_ distance: Double) -> String {
+        let meters = distance * mouseDistanceMetersPerPixel
         if meters >= 1000 {
             return String(format: "%.2f km", meters / 1000)
         } else if distance >= 1000 {

@@ -128,6 +128,9 @@ class InputMonitor {
             // 忽略自动重复的按键（按住不放产生的重复事件）
             let isAutoRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
             if !isAutoRepeat {
+                if statsManager.handleMouseDistanceCalibrationKeyPress() {
+                    return
+                }
                 let keyName = keyName(for: event)
                 let appIdentity = appIdentityProvider()
                 statsManager.incrementKeyPresses(keyName: keyName, appIdentity: appIdentity)
@@ -336,7 +339,11 @@ class InputMonitor {
             
             // 过滤掉异常的大距离（可能是鼠标跳跃）
             if distance < 500 {
-                statsManager.addMouseDistance(distance)
+                if statsManager.isMouseDistanceCalibrating {
+                    statsManager.recordMouseDistanceCalibration(distance)
+                } else {
+                    statsManager.addMouseDistance(distance)
+                }
             }
         }
         
