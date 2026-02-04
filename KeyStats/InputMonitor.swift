@@ -1,6 +1,7 @@
 import Foundation
 import Cocoa
 import CoreGraphics
+import Carbon
 
 /// 输入事件监听器
 class InputMonitor {
@@ -12,8 +13,20 @@ class InputMonitor {
     private let mouseSampleInterval: TimeInterval = 1.0 / 30.0
     private var lastMouseSampleTime: TimeInterval = 0
     private let swapLeftRightButtonKey = "com.apple.mouse.swapLeftRightButton"
+    private let layoutLock = NSLock()
+    private var cachedLayoutData: CFData?
+    private var inputSourceObserver: NSObjectProtocol?
     
-    private init() {}
+    private init() {
+        startInputSourceMonitoring()
+        refreshKeyboardLayoutCache()
+    }
+
+    deinit {
+        if let observer = inputSourceObserver {
+            DistributedNotificationCenter.default().removeObserver(observer)
+        }
+    }
     
     // MARK: - 权限检查
     
@@ -202,19 +215,8 @@ class InputMonitor {
         if let mapped = Self.keyCodeMap[keyCode] {
             return mapped
         }
-        if let nsEvent = NSEvent(cgEvent: event),
-           let chars = nsEvent.charactersIgnoringModifiers,
-           !chars.isEmpty {
-            if chars == " " { return "Space" }
-            if chars == "\t" { return "Tab" }
-            if chars == "\r" { return "Return" }
-            let cleaned = chars.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !cleaned.isEmpty {
-                if cleaned.count == 1 {
-                    return cleaned.uppercased()
-                }
-                return cleaned
-            }
+        if let asciiName = asciiKeyName(for: keyCode, event: event) {
+            return asciiName
         }
         return "Key\(keyCode)"
     }
@@ -254,6 +256,71 @@ class InputMonitor {
         125: "Down",
         126: "Up"
     ]
+
+    // MARK: - Keyboard Layout
+
+    private func startInputSourceMonitoring() {
+        let name = NSNotification.Name(kTISNotifySelectedKeyboardInputSourceChanged as String)
+        inputSourceObserver = DistributedNotificationCenter.default().addObserver(
+            forName: name,
+            object: nil,
+            queue: nil
+        ) { [weak self] _ in
+            self?.refreshKeyboardLayoutCache()
+        }
+    }
+
+    private func refreshKeyboardLayoutCache() {
+        let currentSource = TISCopyCurrentKeyboardLayoutInputSource()?.takeRetainedValue()
+        let currentDataPtr = currentSource.flatMap { TISGetInputSourceProperty($0, kTISPropertyUnicodeKeyLayoutData) }
+        var layoutData = currentDataPtr.map { Unmanaged<CFData>.fromOpaque($0).takeUnretainedValue() }
+        if layoutData == nil {
+            if let asciiSource = TISCopyCurrentASCIICapableKeyboardLayoutInputSource()?.takeRetainedValue() {
+                let asciiDataPtr = TISGetInputSourceProperty(asciiSource, kTISPropertyUnicodeKeyLayoutData)
+                layoutData = asciiDataPtr.map { Unmanaged<CFData>.fromOpaque($0).takeUnretainedValue() }
+            }
+        }
+        layoutLock.lock()
+        cachedLayoutData = layoutData
+        layoutLock.unlock()
+    }
+
+    private func asciiKeyName(for keyCode: Int, event: CGEvent) -> String? {
+        layoutLock.lock()
+        let layoutData = cachedLayoutData
+        layoutLock.unlock()
+        guard let layoutData = layoutData else { return nil }
+        guard let layoutPtr = CFDataGetBytePtr(layoutData) else { return nil }
+        let keyboardLayout = unsafeBitCast(layoutPtr, to: UnsafePointer<UCKeyboardLayout>.self)
+
+        var deadKeyState: UInt32 = 0
+        var chars = [UniChar](repeating: 0, count: 4)
+        var actualLength: Int = 0
+        let keyboardType = UInt32(event.getIntegerValueField(.keyboardEventKeyboardType))
+        let modifiers: UInt32 = 0
+        let status = UCKeyTranslate(
+            keyboardLayout,
+            UInt16(keyCode),
+            UInt16(kUCKeyActionDown),
+            modifiers,
+            keyboardType,
+            UInt32(kUCKeyTranslateNoDeadKeysBit),
+            &deadKeyState,
+            chars.count,
+            &actualLength,
+            &chars
+        )
+
+        guard status == noErr, actualLength > 0 else { return nil }
+        let raw = String(utf16CodeUnits: chars, count: actualLength)
+        let cleaned = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else { return nil }
+        guard cleaned.count == 1 else { return nil }
+        if cleaned == " " { return "Space" }
+        if cleaned == "\t" { return "Tab" }
+        if cleaned == "\r" { return "Return" }
+        return cleaned.uppercased()
+    }
     
     private func handleMouseMove(event: CGEvent) {
         let now = CFAbsoluteTimeGetCurrent()
