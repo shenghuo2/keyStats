@@ -15,7 +15,7 @@ public class StatsManager : IDisposable
     private static StatsManager? _instance;
     public static StatsManager Instance => _instance ??= new StatsManager();
 
-    private const double MetersPerPixel = 0.000264583;
+    private const double DefaultMetersPerPixel = AppSettings.DefaultMouseMetersPerPixel;
 
     private readonly string _dataFolder;
     private readonly string _statsFilePath;
@@ -763,14 +763,25 @@ public class StatsManager : IDisposable
         };
     }
 
-    private string FormatMouseDistance(double distance)
+    public string FormatMouseDistance(double distance)
     {
-        var meters = distance * MetersPerPixel;
+        if (string.Equals(Settings.MouseDistanceUnit, "px", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"{distance:F0} px";
+        }
+
+        var metersPerPixel = GetMetersPerPixel();
+        if (metersPerPixel <= 0)
+        {
+            return $"{distance:F0} px";
+        }
+
+        var meters = distance * metersPerPixel;
         if (meters >= 1000)
             return $"{meters / 1000:F2} km";
-        if (distance >= 1000)
+        if (meters >= 1)
             return $"{meters:F1} m";
-        return $"{distance:F0} px";
+        return $"{meters * 100:F1} cm";
     }
 
     private string FormatScrollDistance(double distance)
@@ -778,6 +789,48 @@ public class StatsManager : IDisposable
         if (distance >= 10000)
             return $"{distance / 1000:F1} k";
         return $"{distance:F0} px";
+    }
+
+    #endregion
+
+    #region Mouse Calibration
+
+    public void UpdateMouseCalibration(double metersPerPixel)
+    {
+        if (double.IsNaN(metersPerPixel) || double.IsInfinity(metersPerPixel) || metersPerPixel <= 0)
+        {
+            return;
+        }
+
+        lock (_lock)
+        {
+            Settings.MouseMetersPerPixel = metersPerPixel;
+        }
+
+        SaveSettings();
+        NotifyStatsUpdate();
+    }
+
+    public void UpdateMouseDistanceUnit(string unit)
+    {
+        var normalized = string.Equals(unit, "px", StringComparison.OrdinalIgnoreCase) ? "px" : "auto";
+        lock (_lock)
+        {
+            Settings.MouseDistanceUnit = normalized;
+        }
+
+        SaveSettings();
+        NotifyStatsUpdate();
+    }
+
+    private double GetMetersPerPixel()
+    {
+        var metersPerPixel = Settings.MouseMetersPerPixel;
+        if (double.IsNaN(metersPerPixel) || double.IsInfinity(metersPerPixel) || metersPerPixel <= 0)
+        {
+            return DefaultMetersPerPixel;
+        }
+        return metersPerPixel;
     }
 
     #endregion

@@ -23,6 +23,7 @@ public partial class App : System.Windows.Application
     private TaskbarIcon? _trayIcon;
     private TrayIconViewModel? _trayIconViewModel;
     private NotificationSettingsWindow? _settingsWindow;
+    private MouseCalibrationWindow? _mouseCalibrationWindow;
     private AppStatsWindow? _appStatsWindow;
     private System.Threading.Mutex? _singleInstanceMutex;
     private string? _appVersion;
@@ -169,6 +170,14 @@ public partial class App : System.Windows.Application
         };
         menu.Items.Add(notifySettingsItem);
 
+        var calibrationItem = new System.Windows.Controls.MenuItem { Header = "距离校准" };
+        calibrationItem.Click += (s, e) =>
+        {
+            TrackClick("context_menu_mouse_calibration");
+            ShowMouseCalibration();
+        };
+        menu.Items.Add(calibrationItem);
+
         var startupItem = new System.Windows.Controls.MenuItem
         {
             Header = "开机启动",
@@ -218,6 +227,20 @@ public partial class App : System.Windows.Application
         _settingsWindow = new NotificationSettingsWindow();
         _settingsWindow.Closed += (_, _) => _settingsWindow = null;
         _settingsWindow.Show();
+    }
+
+    private void ShowMouseCalibration()
+    {
+        if (_mouseCalibrationWindow != null && _mouseCalibrationWindow.IsVisible)
+        {
+            _mouseCalibrationWindow.Activate();
+            return;
+        }
+
+        _mouseCalibrationWindow = new MouseCalibrationWindow();
+        _mouseCalibrationWindow.Closed += (_, _) => _mouseCalibrationWindow = null;
+        _mouseCalibrationWindow.Show();
+        _mouseCalibrationWindow.Activate();
     }
 
     public void ShowAppStatsWindow()

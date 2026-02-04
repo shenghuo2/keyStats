@@ -5,6 +5,8 @@ namespace KeyStats.Models;
 
 public class AppSettings
 {
+    public const double DefaultMouseMetersPerPixel = 0.000264583;
+
     [JsonPropertyName("notificationsEnabled")]
     public bool NotificationsEnabled { get; set; }
 
@@ -34,4 +36,10 @@ public class AppSettings
 
     [JsonPropertyName("analyticsInstallTracked")]
     public bool AnalyticsInstallTracked { get; set; }
+
+    [JsonPropertyName("mouseMetersPerPixel")]
+    public double MouseMetersPerPixel { get; set; } = DefaultMouseMetersPerPixel;
+
+    [JsonPropertyName("mouseDistanceUnit")]
+    public string MouseDistanceUnit { get; set; } = "auto"; // auto | px
 }
