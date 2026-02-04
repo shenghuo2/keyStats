@@ -4,6 +4,9 @@
 - Use Xcode to build and run the project
 - Do not run `xcodebuild` from command line
 
+## UI Guidance
+- Ensure all UI colors adapt to dark mode (prefer dynamic colors + `resolvedCGColor`/`resolvedColor`)
+
 ## Recent Changes
 
 ### Menu Bar Icon Highlight State

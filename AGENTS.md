@@ -77,6 +77,7 @@ Issue type?
 - ✅ Use `guard` for early returns and validation
 - ✅ Use descriptive names, avoid magic numbers
 - ✅ Localize user-facing strings with `NSLocalizedString()`
+- ✅ Ensure UI colors adapt to dark mode (use dynamic colors + `resolvedCGColor`/`resolvedColor`)
 
 ### 🟢 RECOMMENDED (Best Practices)
 - ✅ Document public APIs with `///` comments
