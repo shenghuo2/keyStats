@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -424,6 +425,62 @@ public class StatsManager : IDisposable
         return Encoding.UTF8.GetBytes(json);
     }
 
+    public void ImportStatsData(byte[] data)
+    {
+        if (data == null || data.Length == 0)
+        {
+            throw new InvalidDataException("导入文件为空。");
+        }
+
+        var deserializeOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
+        ExportPayload payload;
+        try
+        {
+            payload = JsonSerializer.Deserialize<ExportPayload>(data, deserializeOptions)
+                ?? throw new InvalidDataException("数据格式无效。");
+        }
+        catch (InvalidDataException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidDataException("数据格式无效。", ex);
+        }
+
+        if (payload.Version != 1)
+        {
+            throw new InvalidDataException("不支持的导出版本。");
+        }
+
+        lock (_lock)
+        {
+            _saveTimer?.Stop();
+            _pendingSave = false;
+            _statsUpdateTimer?.Stop();
+            _pendingStatsUpdate = false;
+
+            var importedHistory = NormalizeHistory(payload.History);
+            var importedCurrent = NormalizeDailyStats(payload.CurrentStats, DateTime.Today);
+            importedHistory[importedCurrent.Date.ToString("yyyy-MM-dd")] = CloneDailyStats(importedCurrent, importedCurrent.Date);
+
+            var todayKey = DateTime.Today.ToString("yyyy-MM-dd");
+            History = importedHistory;
+            CurrentStats = History.TryGetValue(todayKey, out var todayStats)
+                ? CloneDailyStats(todayStats, todayStats.Date.Date)
+                : new DailyStats(DateTime.Today);
+
+            UpdateNotificationBaselines();
+        }
+
+        SaveStats();
+        NotifyStatsUpdate();
+    }
+
     private static DailyStats CloneDailyStats(DailyStats source, DateTime dateOverride)
     {
         var normalizedDate = dateOverride.Date;
@@ -437,6 +494,109 @@ public class StatsManager : IDisposable
             KeyPressCounts = new Dictionary<string, int>(source.KeyPressCounts),
             AppStats = source.AppStats.ToDictionary(k => k.Key, v => new AppStats(v.Value))
         };
+    }
+
+    private static Dictionary<string, DailyStats> NormalizeHistory(Dictionary<string, DailyStats>? source)
+    {
+        var normalized = new Dictionary<string, DailyStats>();
+        if (source == null)
+        {
+            return normalized;
+        }
+
+        foreach (var kvp in source)
+        {
+            var fallbackDate = DateTime.Today;
+            if (DateTime.TryParseExact(
+                kvp.Key,
+                "yyyy-MM-dd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out var parsedDate))
+            {
+                fallbackDate = parsedDate.Date;
+            }
+
+            var daily = NormalizeDailyStats(kvp.Value, fallbackDate);
+            normalized[daily.Date.ToString("yyyy-MM-dd")] = daily;
+        }
+
+        return normalized;
+    }
+
+    private static DailyStats NormalizeDailyStats(DailyStats? source, DateTime fallbackDate)
+    {
+        var normalizedDate = source?.Date.Date ?? fallbackDate.Date;
+        if (normalizedDate == DateTime.MinValue.Date)
+        {
+            normalizedDate = fallbackDate.Date;
+        }
+
+        var keyPressCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+        if (source?.KeyPressCounts != null)
+        {
+            foreach (var kvp in source.KeyPressCounts)
+            {
+                var key = (kvp.Key ?? string.Empty).Trim();
+                var count = Math.Max(0, kvp.Value);
+                if (string.IsNullOrWhiteSpace(key) || count <= 0)
+                {
+                    continue;
+                }
+
+                keyPressCounts[key] = count;
+            }
+        }
+
+        var appStats = new Dictionary<string, AppStats>(StringComparer.OrdinalIgnoreCase);
+        if (source?.AppStats != null)
+        {
+            foreach (var kvp in source.AppStats)
+            {
+                var keyName = (kvp.Key ?? string.Empty).Trim();
+                var sourceStats = kvp.Value ?? new AppStats();
+                var appName = string.IsNullOrWhiteSpace(sourceStats.AppName)
+                    ? keyName
+                    : sourceStats.AppName.Trim();
+
+                if (string.IsNullOrWhiteSpace(appName))
+                {
+                    continue;
+                }
+
+                var displayName = string.IsNullOrWhiteSpace(sourceStats.DisplayName)
+                    ? appName
+                    : sourceStats.DisplayName.Trim();
+
+                appStats[appName] = new AppStats(appName, displayName)
+                {
+                    KeyPresses = Math.Max(0, sourceStats.KeyPresses),
+                    LeftClicks = Math.Max(0, sourceStats.LeftClicks),
+                    RightClicks = Math.Max(0, sourceStats.RightClicks),
+                    ScrollDistance = SanitizeDistance(sourceStats.ScrollDistance)
+                };
+            }
+        }
+
+        return new DailyStats(normalizedDate)
+        {
+            KeyPresses = Math.Max(0, source?.KeyPresses ?? 0),
+            KeyPressCounts = keyPressCounts,
+            LeftClicks = Math.Max(0, source?.LeftClicks ?? 0),
+            RightClicks = Math.Max(0, source?.RightClicks ?? 0),
+            MouseDistance = SanitizeDistance(source?.MouseDistance ?? 0),
+            ScrollDistance = SanitizeDistance(source?.ScrollDistance ?? 0),
+            AppStats = appStats
+        };
+    }
+
+    private static double SanitizeDistance(double value)
+    {
+        if (double.IsNaN(value) || double.IsInfinity(value) || value < 0)
+        {
+            return 0;
+        }
+        return value;
     }
 
     private sealed class ExportPayload

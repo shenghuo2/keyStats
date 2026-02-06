@@ -162,6 +162,14 @@ public partial class App : System.Windows.Application
         };
         menu.Items.Add(exportItem);
 
+        var importItem = new System.Windows.Controls.MenuItem { Header = "导入数据" };
+        importItem.Click += (s, e) =>
+        {
+            TrackClick("context_menu_import");
+            ImportData();
+        };
+        menu.Items.Add(importItem);
+
         var notifySettingsItem = new System.Windows.Controls.MenuItem { Header = "通知设置" };
         notifySettingsItem.Click += (s, e) =>
         {
@@ -315,6 +323,77 @@ public partial class App : System.Windows.Application
             new ToastContentBuilder()
                 .AddText("导出失败")
                 .AddText($"无法导出数据：{ex.Message}")
+                .Show();
+        }
+    }
+
+    private void ImportData()
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.Invoke(ImportData);
+            return;
+        }
+
+        try
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "导入数据",
+                Filter = "JSON 文件 (*.json)|*.json|所有文件 (*.*)|*.*",
+                DefaultExt = ".json",
+                CheckFileExists = true,
+                Multiselect = false
+            };
+
+            var hiddenWindow = new Window
+            {
+                Width = 0,
+                Height = 0,
+                WindowStyle = WindowStyle.None,
+                ShowInTaskbar = false,
+                ShowActivated = false,
+                Visibility = Visibility.Hidden
+            };
+            hiddenWindow.Show();
+
+            try
+            {
+                if (dialog.ShowDialog(hiddenWindow) != true || string.IsNullOrWhiteSpace(dialog.FileName))
+                {
+                    return;
+                }
+
+                var confirmed = MessageBox.Show(
+                    hiddenWindow,
+                    "导入会覆盖所有已记录统计数据（今日和历史）。其他设置保持不变。\n\n确定继续吗？",
+                    "确认导入",
+                    MessageBoxButton.OKCancel,
+                    MessageBoxImage.Warning);
+
+                if (confirmed != MessageBoxResult.OK)
+                {
+                    return;
+                }
+
+                var data = File.ReadAllBytes(dialog.FileName);
+                StatsManager.Instance.ImportStatsData(data);
+
+                new ToastContentBuilder()
+                    .AddText("导入成功")
+                    .AddText($"已导入并覆盖统计数据：{Path.GetFileName(dialog.FileName)}")
+                    .Show();
+            }
+            finally
+            {
+                hiddenWindow.Close();
+            }
+        }
+        catch (Exception ex)
+        {
+            new ToastContentBuilder()
+                .AddText("导入失败")
+                .AddText($"无法导入数据：{ex.Message}")
                 .Show();
         }
     }
