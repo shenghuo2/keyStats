@@ -22,7 +22,8 @@ public partial class App : System.Windows.Application
 {
     private TaskbarIcon? _trayIcon;
     private TrayIconViewModel? _trayIconViewModel;
-    private NotificationSettingsWindow? _settingsWindow;
+    private SettingsWindow? _settingsWindow;
+    private NotificationSettingsWindow? _notificationSettingsWindow;
     private MouseCalibrationWindow? _mouseCalibrationWindow;
     private AppStatsWindow? _appStatsWindow;
     private System.Threading.Mutex? _singleInstanceMutex;
@@ -146,45 +147,13 @@ public partial class App : System.Windows.Application
     {
         var menu = new System.Windows.Controls.ContextMenu();
 
-        var showStatsItem = new System.Windows.Controls.MenuItem { Header = "显示统计" };
-        showStatsItem.Click += (s, e) =>
+        var settingsItem = new System.Windows.Controls.MenuItem { Header = "设置" };
+        settingsItem.Click += (s, e) =>
         {
-            TrackClick("context_menu_show_stats");
-            _trayIconViewModel?.ShowStatsCommand.Execute(null);
+            TrackClick("context_menu_settings");
+            ShowSettingsWindow();
         };
-        menu.Items.Add(showStatsItem);
-
-        var exportItem = new System.Windows.Controls.MenuItem { Header = "导出数据" };
-        exportItem.Click += (s, e) =>
-        {
-            TrackClick("context_menu_export");
-            ExportData();
-        };
-        menu.Items.Add(exportItem);
-
-        var importItem = new System.Windows.Controls.MenuItem { Header = "导入数据" };
-        importItem.Click += (s, e) =>
-        {
-            TrackClick("context_menu_import");
-            ImportData();
-        };
-        menu.Items.Add(importItem);
-
-        var notifySettingsItem = new System.Windows.Controls.MenuItem { Header = "通知设置" };
-        notifySettingsItem.Click += (s, e) =>
-        {
-            TrackClick("context_menu_notification_settings");
-            ShowNotificationSettings();
-        };
-        menu.Items.Add(notifySettingsItem);
-
-        var calibrationItem = new System.Windows.Controls.MenuItem { Header = "距离校准" };
-        calibrationItem.Click += (s, e) =>
-        {
-            TrackClick("context_menu_mouse_calibration");
-            ShowMouseCalibration();
-        };
-        menu.Items.Add(calibrationItem);
+        menu.Items.Add(settingsItem);
 
         var startupItem = new System.Windows.Controls.MenuItem
         {
@@ -224,20 +193,20 @@ public partial class App : System.Windows.Application
         return menu;
     }
 
-    private void ShowNotificationSettings()
+    public void ShowNotificationSettings()
     {
-        if (_settingsWindow != null && _settingsWindow.IsVisible)
+        if (_notificationSettingsWindow != null && _notificationSettingsWindow.IsVisible)
         {
-            _settingsWindow.Activate();
+            _notificationSettingsWindow.Activate();
             return;
         }
 
-        _settingsWindow = new NotificationSettingsWindow();
-        _settingsWindow.Closed += (_, _) => _settingsWindow = null;
-        _settingsWindow.Show();
+        _notificationSettingsWindow = new NotificationSettingsWindow();
+        _notificationSettingsWindow.Closed += (_, _) => _notificationSettingsWindow = null;
+        _notificationSettingsWindow.Show();
     }
 
-    private void ShowMouseCalibration()
+    public void ShowMouseCalibration()
     {
         if (_mouseCalibrationWindow != null && _mouseCalibrationWindow.IsVisible)
         {
@@ -251,6 +220,24 @@ public partial class App : System.Windows.Application
         _mouseCalibrationWindow.Activate();
     }
 
+    public void ShowSettingsWindow()
+    {
+        if (_settingsWindow != null && _settingsWindow.IsVisible)
+        {
+            _settingsWindow.Activate();
+            return;
+        }
+
+        _settingsWindow = new SettingsWindow();
+        _settingsWindow.Closed += (_, _) => _settingsWindow = null;
+        _settingsWindow.Show();
+        _settingsWindow.Activate();
+    }
+
+    public void ShowStatsPanel()
+    {
+        _trayIconViewModel?.ShowStatsCommand.Execute(null);
+    }
     public void ShowAppStatsWindow()
     {
         if (_appStatsWindow != null && _appStatsWindow.IsVisible)
@@ -265,7 +252,7 @@ public partial class App : System.Windows.Application
         _appStatsWindow.Activate();
     }
 
-    private void ExportData()
+    public void ExportData()
     {
         // 确保在 UI 线程上执行
         if (!Dispatcher.CheckAccess())
@@ -327,7 +314,7 @@ public partial class App : System.Windows.Application
         }
     }
 
-    private void ImportData()
+    public void ImportData()
     {
         if (!Dispatcher.CheckAccess())
         {
@@ -568,7 +555,7 @@ public partial class App : System.Windows.Application
         }
 
         var baseProperties = BuildBaseProperties(statsManager.Settings);
-        // 将 distinctId 添加到属性中，因为 DotPostHog 的 Capture 可能不接受 distinctId 作为单独参数
+        // 将 distinctId 加到属性中，因为 DotPostHog 的 Capture 可能不接受 distinctId 作为单独参数
         // distinctId 已经通过上面的检查确保不为空
         baseProperties["distinct_id"] = distinctId!;
         
@@ -616,8 +603,8 @@ public partial class App : System.Windows.Application
             ["app_name"] = "KeyStats",
             ["app_version"] = appVersion,
             ["platform"] = "windows",
-            ["OS"] = "windows",
-            ["os_version"] = windowsName,
+            ["$os"] = "Windows",
+            ["$os_version"] = windowsName,
             ["os_build"] = windowsBuild,
             ["dotnet_version"] = System.Environment.Version.ToString(),
             ["locale"] = CultureInfo.CurrentUICulture.Name
