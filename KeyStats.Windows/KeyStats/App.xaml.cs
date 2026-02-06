@@ -364,29 +364,33 @@ public partial class App : System.Windows.Application
                     return;
                 }
 
-                var confirmed = MessageBox.Show(
-                    hiddenWindow,
-                    "导入会覆盖所有已记录统计数据（今日和历史）。其他设置保持不变。\n\n确定继续吗？",
-                    "确认导入",
-                    MessageBoxButton.OKCancel,
-                    MessageBoxImage.Warning);
+                var selectedFile = dialog.FileName;
+                hiddenWindow.Close();
 
-                if (confirmed != MessageBoxResult.OK)
+                // Show Win11-style import mode dialog
+                var mode = ImportModeDialog.Show();
+                if (mode == null)
                 {
                     return;
                 }
 
-                var data = File.ReadAllBytes(dialog.FileName);
-                StatsManager.Instance.ImportStatsData(data);
+                var data = File.ReadAllBytes(selectedFile);
+                StatsManager.Instance.ImportStatsData(data, mode.Value);
 
+                var modeLabel = mode == StatsManager.ImportMode.Overwrite ? "覆盖" : "合并";
                 new ToastContentBuilder()
                     .AddText("导入成功")
-                    .AddText($"已导入并覆盖统计数据：{Path.GetFileName(dialog.FileName)}")
+                    .AddText($"已{modeLabel}导入统计数据：{Path.GetFileName(selectedFile)}")
                     .Show();
+
+                return;
             }
             finally
             {
-                hiddenWindow.Close();
+                if (hiddenWindow.IsVisible)
+                {
+                    hiddenWindow.Close();
+                }
             }
         }
         catch (Exception ex)

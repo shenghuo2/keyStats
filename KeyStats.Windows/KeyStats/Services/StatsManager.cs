@@ -389,6 +389,12 @@ public class StatsManager : IDisposable
 
     #region Export
 
+    public enum ImportMode
+    {
+        Overwrite,
+        Merge
+    }
+
     public byte[] ExportStatsData()
     {
         ExportPayload payload;
@@ -426,6 +432,11 @@ public class StatsManager : IDisposable
     }
 
     public void ImportStatsData(byte[] data)
+    {
+        ImportStatsData(data, ImportMode.Overwrite);
+    }
+
+    public void ImportStatsData(byte[] data, ImportMode mode)
     {
         if (data == null || data.Length == 0)
         {
@@ -469,7 +480,31 @@ public class StatsManager : IDisposable
             importedHistory[importedCurrent.Date.ToString("yyyy-MM-dd")] = CloneDailyStats(importedCurrent, importedCurrent.Date);
 
             var todayKey = DateTime.Today.ToString("yyyy-MM-dd");
-            History = importedHistory;
+            if (mode == ImportMode.Merge)
+            {
+                var mergedHistory = CloneHistorySnapshot(History);
+                var currentSnapshot = CloneDailyStats(CurrentStats, CurrentStats.Date.Date);
+                mergedHistory[currentSnapshot.Date.ToString("yyyy-MM-dd")] = currentSnapshot;
+
+                foreach (var kvp in importedHistory)
+                {
+                    if (mergedHistory.TryGetValue(kvp.Key, out var existing))
+                    {
+                        mergedHistory[kvp.Key] = MergeDailyStats(existing, kvp.Value);
+                    }
+                    else
+                    {
+                        mergedHistory[kvp.Key] = CloneDailyStats(kvp.Value, kvp.Value.Date.Date);
+                    }
+                }
+
+                History = mergedHistory;
+            }
+            else
+            {
+                History = importedHistory;
+            }
+
             CurrentStats = History.TryGetValue(todayKey, out var todayStats)
                 ? CloneDailyStats(todayStats, todayStats.Date.Date)
                 : new DailyStats(DateTime.Today);
@@ -586,6 +621,56 @@ public class StatsManager : IDisposable
             RightClicks = Math.Max(0, source?.RightClicks ?? 0),
             MouseDistance = SanitizeDistance(source?.MouseDistance ?? 0),
             ScrollDistance = SanitizeDistance(source?.ScrollDistance ?? 0),
+            AppStats = appStats
+        };
+    }
+
+    private static DailyStats MergeDailyStats(DailyStats existing, DailyStats incoming)
+    {
+        var normalizedExisting = NormalizeDailyStats(existing, existing.Date.Date);
+        var normalizedIncoming = NormalizeDailyStats(incoming, normalizedExisting.Date.Date);
+
+        var keyPressCounts = new Dictionary<string, int>(normalizedExisting.KeyPressCounts, StringComparer.Ordinal);
+        foreach (var kvp in normalizedIncoming.KeyPressCounts)
+        {
+            keyPressCounts[kvp.Key] = keyPressCounts.TryGetValue(kvp.Key, out var current)
+                ? current + kvp.Value
+                : kvp.Value;
+        }
+
+        var appStats = new Dictionary<string, AppStats>(StringComparer.OrdinalIgnoreCase);
+        foreach (var kvp in normalizedExisting.AppStats)
+        {
+            appStats[kvp.Key] = new AppStats(kvp.Value);
+        }
+
+        foreach (var kvp in normalizedIncoming.AppStats)
+        {
+            if (!appStats.TryGetValue(kvp.Key, out var existingApp))
+            {
+                appStats[kvp.Key] = new AppStats(kvp.Value);
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(existingApp.DisplayName) && !string.IsNullOrWhiteSpace(kvp.Value.DisplayName))
+            {
+                existingApp.DisplayName = kvp.Value.DisplayName;
+            }
+
+            existingApp.KeyPresses += kvp.Value.KeyPresses;
+            existingApp.LeftClicks += kvp.Value.LeftClicks;
+            existingApp.RightClicks += kvp.Value.RightClicks;
+            existingApp.ScrollDistance += kvp.Value.ScrollDistance;
+        }
+
+        return new DailyStats(normalizedExisting.Date.Date)
+        {
+            KeyPresses = normalizedExisting.KeyPresses + normalizedIncoming.KeyPresses,
+            LeftClicks = normalizedExisting.LeftClicks + normalizedIncoming.LeftClicks,
+            RightClicks = normalizedExisting.RightClicks + normalizedIncoming.RightClicks,
+            MouseDistance = normalizedExisting.MouseDistance + normalizedIncoming.MouseDistance,
+            ScrollDistance = normalizedExisting.ScrollDistance + normalizedIncoming.ScrollDistance,
+            KeyPressCounts = keyPressCounts,
             AppStats = appStats
         };
     }
