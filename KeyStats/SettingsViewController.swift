@@ -971,26 +971,87 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
         alert.messageText = NSLocalizedString("import.confirm.title", comment: "")
         alert.informativeText = NSLocalizedString("import.confirm.message", comment: "")
         alert.alertStyle = .warning
-        alert.addButton(withTitle: NSLocalizedString("import.confirm.confirm", comment: ""))
+        alert.addButton(withTitle: NSLocalizedString("import.confirm.overwrite", comment: ""))
+        alert.addButton(withTitle: NSLocalizedString("import.confirm.merge", comment: ""))
         alert.addButton(withTitle: NSLocalizedString("import.confirm.cancel", comment: ""))
 
-        if alert.runModal() == .alertFirstButtonReturn {
-            performImport(from: url)
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:
+            confirmModeAndImport(from: url, mode: .overwrite)
+        case .alertSecondButtonReturn:
+            confirmModeAndImport(from: url, mode: .merge)
+        default:
+            break
         }
     }
 
-    private func performImport(from url: URL) {
+    private func confirmModeAndImport(from url: URL, mode: StatsManager.ImportMode) {
+        let alert = NSAlert()
+        let appIcon = NSImage(named: "AppIcon") ?? NSApp.applicationIconImage
+        alert.icon = appIcon
+        alert.messageText = NSLocalizedString("import.confirm.mode.title", comment: "")
+        alert.alertStyle = .warning
+        alert.accessoryView = makeModeConfirmationTextView(mode: mode)
+        alert.addButton(withTitle: NSLocalizedString("import.confirm.mode.confirm", comment: ""))
+        alert.addButton(withTitle: NSLocalizedString("import.confirm.cancel", comment: ""))
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        performImport(from: url, mode: mode)
+    }
+
+    private func makeModeConfirmationTextView(mode: StatsManager.ImportMode) -> NSView {
+        let messageKey = mode == .overwrite
+            ? "import.confirm.mode.message.overwrite"
+            : "import.confirm.mode.message.merge"
+        let keywordKey = mode == .overwrite
+            ? "import.confirm.mode.keyword.overwrite"
+            : "import.confirm.mode.keyword.merge"
+
+        let message = NSLocalizedString(messageKey, comment: "")
+        let keyword = NSLocalizedString(keywordKey, comment: "")
+        let regularFont = NSFont.systemFont(ofSize: NSFont.systemFontSize)
+        let boldFont = NSFont.boldSystemFont(ofSize: NSFont.systemFontSize)
+
+        let attributed = NSMutableAttributedString(
+            string: message,
+            attributes: [.font: regularFont, .foregroundColor: NSColor.labelColor]
+        )
+
+        if let range = message.range(of: keyword) {
+            attributed.addAttribute(.font, value: boldFont, range: NSRange(range, in: message))
+        }
+
+        let label = NSTextField(labelWithAttributedString: attributed)
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.lineBreakMode = .byWordWrapping
+        label.maximumNumberOfLines = 0
+        label.preferredMaxLayoutWidth = 320
+
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 320, height: 44))
+        container.addSubview(label)
+
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            label.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            label.topAnchor.constraint(equalTo: container.topAnchor),
+            label.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+        ])
+
+        return container
+    }
+
+    private func performImport(from url: URL, mode: StatsManager.ImportMode) {
         do {
             let data = try Data(contentsOf: url)
-            try StatsManager.shared.importStatsData(from: data)
-            PostHogSDK.shared.capture("statsImported")
-            showImportSuccess()
+            try StatsManager.shared.importStatsData(from: data, mode: mode)
+            PostHogSDK.shared.capture("statsImported", properties: ["mode": mode == .overwrite ? "overwrite" : "merge"])
+            showImportSuccess(mode: mode)
         } catch {
             showImportError(error)
         }
     }
 
-    private func showImportSuccess() {
+    private func showImportSuccess(mode: StatsManager.ImportMode) {
         let alert = NSAlert()
         alert.messageText = NSLocalizedString(
             "import.success.title",
@@ -1000,10 +1061,12 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
             comment: ""
         )
         alert.informativeText = NSLocalizedString(
-            "import.success.message",
+            mode == .overwrite ? "import.success.message.overwrite" : "import.success.message.merge",
             tableName: nil,
             bundle: .main,
-            value: "Statistics data has been imported and replaced successfully.",
+            value: mode == .overwrite
+                ? "Statistics data has been imported and replaced successfully."
+                : "Statistics data has been imported and merged successfully.",
             comment: ""
         )
         alert.alertStyle = .informational

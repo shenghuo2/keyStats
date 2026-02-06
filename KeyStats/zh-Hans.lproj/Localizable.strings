@@ -106,8 +106,16 @@
 "import.openPanel.message" = "选择要导入的 KeyStats 导出 JSON 文件";
 "import.openPanel.prompt" = "导入";
 "import.confirm.title" = "确认导入";
-"import.confirm.message" = "导入会覆盖所有已记录统计数据（今日和历史）。其他设置保持不变。";
+"import.confirm.message" = "请选择导入方式：覆盖现有统计数据，或与现有数据合并累加。";
 "import.confirm.confirm" = "导入并覆盖";
+"import.confirm.overwrite" = "覆盖现有数据";
+"import.confirm.merge" = "合并并累加";
+"import.confirm.mode.title" = "再次确认导入";
+"import.confirm.mode.confirm" = "确认并导入";
+"import.confirm.mode.keyword.overwrite" = "覆盖";
+"import.confirm.mode.keyword.merge" = "合并";
+"import.confirm.mode.message.overwrite" = "你选择了覆盖模式。本次导入将覆盖现有统计数据。确认继续吗？";
+"import.confirm.mode.message.merge" = "你选择了合并模式。本次导入将与现有数据合并累加。确认继续吗？";
 "import.confirm.cancel" = "取消";
 "import.error.title" = "导入失败";
 "import.error.message" = "无法导入数据：%@";
@@ -116,6 +124,8 @@
 "import.error.emptyData" = "所选文件为空。";
 "import.success.title" = "导入完成";
 "import.success.message" = "统计数据已成功导入并覆盖。";
+"import.success.message.overwrite" = "统计数据已成功导入并覆盖。";
+"import.success.message.merge" = "统计数据已成功导入并合并累加。";
 
 "about.author" = "作者";
 "about.version" = "版本 %@ (%@)";

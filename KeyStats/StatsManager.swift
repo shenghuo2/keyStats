@@ -209,6 +209,11 @@ struct AllTimeStats {
 class StatsManager {
     static let shared = StatsManager()
 
+    enum ImportMode {
+        case overwrite
+        case merge
+    }
+
     enum MouseDistanceCalibrationResult {
         case success(pixels: Double, factor: Double)
         case failure(pixels: Double)
@@ -858,7 +863,7 @@ class StatsManager {
         return try encoder.encode(payload)
     }
 
-    func importStatsData(from data: Data) throws {
+    func importStatsData(from data: Data, mode: ImportMode = .overwrite) throws {
         guard !data.isEmpty else { throw ImportError.emptyData }
 
         let decoder = JSONDecoder()
@@ -873,10 +878,10 @@ class StatsManager {
 
         guard payload.version == 1 else { throw ImportError.unsupportedVersion }
 
-        applyImportedPayload(payload)
+        applyImportedPayload(payload, mode: mode)
     }
 
-    private func applyImportedPayload(_ payload: ExportPayload) {
+    private func applyImportedPayload(_ payload: ExportPayload, mode: ImportMode) {
         saveTimer?.invalidate()
         saveTimer = nil
 
@@ -886,9 +891,16 @@ class StatsManager {
 
         let today = Calendar.current.startOfDay(for: Date())
         let todayKey = dateFormatter.string(from: today)
+        let resolvedHistory: [String: DailyStats]
+        switch mode {
+        case .overwrite:
+            resolvedHistory = importedHistory
+        case .merge:
+            resolvedHistory = mergedHistory(base: currentHistorySnapshot(), imported: importedHistory)
+        }
 
-        history = importedHistory
-        currentStats = importedHistory[todayKey] ?? DailyStats(date: today)
+        history = resolvedHistory
+        currentStats = resolvedHistory[todayKey] ?? DailyStats(date: today)
 
         cachedHistoryStats = nil
         cachedWeekdayStats = nil
@@ -900,6 +912,82 @@ class StatsManager {
         saveStats()
         notifyMenuBarUpdate()
         notifyStatsUpdate()
+    }
+
+    private func currentHistorySnapshot() -> [String: DailyStats] {
+        var snapshot = normalizedHistory(history)
+        let normalizedCurrent = normalizedDailyStats(currentStats)
+        snapshot[dateFormatter.string(from: normalizedCurrent.date)] = normalizedCurrent
+        return snapshot
+    }
+
+    private func mergedHistory(base: [String: DailyStats], imported: [String: DailyStats]) -> [String: DailyStats] {
+        var merged = base
+
+        for (dayKey, importedStats) in imported {
+            if let existingStats = merged[dayKey] {
+                merged[dayKey] = mergedDailyStats(existingStats, importedStats)
+            } else {
+                merged[dayKey] = importedStats
+            }
+        }
+
+        return merged
+    }
+
+    private func mergedDailyStats(_ lhs: DailyStats, _ rhs: DailyStats) -> DailyStats {
+        var merged = DailyStats(date: lhs.date)
+        merged.keyPresses = safeAdd(lhs.keyPresses, rhs.keyPresses)
+        merged.leftClicks = safeAdd(lhs.leftClicks, rhs.leftClicks)
+        merged.rightClicks = safeAdd(lhs.rightClicks, rhs.rightClicks)
+        merged.mouseDistance = safeAddDistance(lhs.mouseDistance, rhs.mouseDistance)
+        merged.scrollDistance = safeAddDistance(lhs.scrollDistance, rhs.scrollDistance)
+        merged.keyPressCounts = mergedCounterMap(lhs.keyPressCounts, rhs.keyPressCounts)
+        merged.appStats = mergedAppStats(lhs.appStats, rhs.appStats)
+        return merged
+    }
+
+    private func mergedCounterMap(_ lhs: [String: Int], _ rhs: [String: Int]) -> [String: Int] {
+        var merged = lhs
+        for (key, value) in rhs {
+            merged[key] = safeAdd(merged[key] ?? 0, value)
+        }
+        return merged
+    }
+
+    private func mergedAppStats(_ lhs: [String: AppStats], _ rhs: [String: AppStats]) -> [String: AppStats] {
+        var merged = lhs
+
+        for (bundleId, importedStats) in rhs {
+            if var existing = merged[bundleId] {
+                existing.bundleId = bundleId
+                existing.keyPresses = safeAdd(existing.keyPresses, importedStats.keyPresses)
+                existing.leftClicks = safeAdd(existing.leftClicks, importedStats.leftClicks)
+                existing.rightClicks = safeAdd(existing.rightClicks, importedStats.rightClicks)
+                existing.scrollDistance = safeAddDistance(existing.scrollDistance, importedStats.scrollDistance)
+
+                let importedName = importedStats.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !importedName.isEmpty {
+                    existing.displayName = importedName
+                }
+
+                merged[bundleId] = existing
+            } else {
+                merged[bundleId] = importedStats
+            }
+        }
+
+        return merged
+    }
+
+    private func safeAdd(_ lhs: Int, _ rhs: Int) -> Int {
+        let (sum, overflow) = lhs.addingReportingOverflow(rhs)
+        return overflow ? Int.max : sum
+    }
+
+    private func safeAddDistance(_ lhs: Double, _ rhs: Double) -> Double {
+        let sum = lhs + rhs
+        return sum.isFinite ? max(0, sum) : Double.greatestFiniteMagnitude
     }
 
     private func normalizedHistory(_ importedHistory: [String: DailyStats]) -> [String: DailyStats] {

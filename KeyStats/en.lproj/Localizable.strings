@@ -106,8 +106,16 @@
 "import.openPanel.message" = "Choose a KeyStats export JSON file to import.";
 "import.openPanel.prompt" = "Import";
 "import.confirm.title" = "Confirm Import";
-"import.confirm.message" = "Importing will overwrite all recorded statistics data (today and history). Other settings will remain unchanged.";
+"import.confirm.message" = "Choose how to import: overwrite existing statistics, or merge and add to existing data.";
 "import.confirm.confirm" = "Import and Overwrite";
+"import.confirm.overwrite" = "Overwrite Existing Data";
+"import.confirm.merge" = "Merge and Add";
+"import.confirm.mode.title" = "Confirm Import Again";
+"import.confirm.mode.confirm" = "Confirm and Import";
+"import.confirm.mode.keyword.overwrite" = "Overwrite";
+"import.confirm.mode.keyword.merge" = "Merge";
+"import.confirm.mode.message.overwrite" = "You selected Overwrite mode. This import will replace existing statistics data. Continue?";
+"import.confirm.mode.message.merge" = "You selected Merge mode. This import will merge and add to existing statistics data. Continue?";
 "import.confirm.cancel" = "Cancel";
 "import.error.title" = "Import Failed";
 "import.error.message" = "Couldn't import data: %@";
@@ -116,6 +124,8 @@
 "import.error.emptyData" = "The selected file is empty.";
 "import.success.title" = "Import Complete";
 "import.success.message" = "Statistics data has been imported and replaced successfully.";
+"import.success.message.overwrite" = "Statistics data has been imported and replaced successfully.";
+"import.success.message.merge" = "Statistics data has been imported and merged successfully.";
 
 "about.author" = "Author";
 "about.version" = "Version %@ (%@)";
