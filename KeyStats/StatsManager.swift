@@ -812,13 +812,30 @@ class StatsManager {
         }
     }
 
-    // MARK: - 数据导出
+    // MARK: - 数据导入导出
 
     private struct ExportPayload: Codable {
         let version: Int
         let exportedAt: Date
         let currentStats: DailyStats
         let history: [String: DailyStats]
+    }
+
+    private enum ImportError: LocalizedError {
+        case invalidFormat
+        case unsupportedVersion
+        case emptyData
+
+        var errorDescription: String? {
+            switch self {
+            case .invalidFormat:
+                return NSLocalizedString("import.error.invalidFormat", comment: "")
+            case .unsupportedVersion:
+                return NSLocalizedString("import.error.unsupportedVersion", comment: "")
+            case .emptyData:
+                return NSLocalizedString("import.error.emptyData", comment: "")
+            }
+        }
     }
 
     func exportStatsData() throws -> Data {
@@ -839,6 +856,98 @@ class StatsManager {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
         return try encoder.encode(payload)
+    }
+
+    func importStatsData(from data: Data) throws {
+        guard !data.isEmpty else { throw ImportError.emptyData }
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        let payload: ExportPayload
+        do {
+            payload = try decoder.decode(ExportPayload.self, from: data)
+        } catch {
+            throw ImportError.invalidFormat
+        }
+
+        guard payload.version == 1 else { throw ImportError.unsupportedVersion }
+
+        applyImportedPayload(payload)
+    }
+
+    private func applyImportedPayload(_ payload: ExportPayload) {
+        saveTimer?.invalidate()
+        saveTimer = nil
+
+        var importedHistory = normalizedHistory(payload.history)
+        let importedCurrent = normalizedDailyStats(payload.currentStats)
+        importedHistory[dateFormatter.string(from: importedCurrent.date)] = importedCurrent
+
+        let today = Calendar.current.startOfDay(for: Date())
+        let todayKey = dateFormatter.string(from: today)
+
+        history = importedHistory
+        currentStats = importedHistory[todayKey] ?? DailyStats(date: today)
+
+        cachedHistoryStats = nil
+        cachedWeekdayStats = nil
+        cachedForDateKey = nil
+
+        saveTimer?.invalidate()
+        saveTimer = nil
+        updateNotificationBaselines()
+        saveStats()
+        notifyMenuBarUpdate()
+        notifyStatsUpdate()
+    }
+
+    private func normalizedHistory(_ importedHistory: [String: DailyStats]) -> [String: DailyStats] {
+        var normalized: [String: DailyStats] = [:]
+        for stats in importedHistory.values {
+            let daily = normalizedDailyStats(stats)
+            normalized[dateFormatter.string(from: daily.date)] = daily
+        }
+        return normalized
+    }
+
+    private func normalizedDailyStats(_ stats: DailyStats) -> DailyStats {
+        var normalized = stats
+        normalized.date = Calendar.current.startOfDay(for: normalized.date)
+        normalized.keyPresses = max(0, normalized.keyPresses)
+        normalized.leftClicks = max(0, normalized.leftClicks)
+        normalized.rightClicks = max(0, normalized.rightClicks)
+        normalized.mouseDistance = normalized.mouseDistance.isFinite ? max(0, normalized.mouseDistance) : 0
+        normalized.scrollDistance = normalized.scrollDistance.isFinite ? max(0, normalized.scrollDistance) : 0
+        normalized.keyPressCounts = normalized.keyPressCounts.reduce(into: [:]) { partial, entry in
+            let key = entry.key.trimmingCharacters(in: .whitespacesAndNewlines)
+            let count = max(0, entry.value)
+            guard !key.isEmpty, count > 0 else { return }
+            partial[key] = count
+        }
+        normalized.appStats = normalizedAppStats(normalized.appStats)
+        return normalized
+    }
+
+    private func normalizedAppStats(_ appStats: [String: AppStats]) -> [String: AppStats] {
+        var normalized: [String: AppStats] = [:]
+
+        for (rawBundleId, value) in appStats {
+            let bundleId = value.bundleId.trimmingCharacters(in: .whitespacesAndNewlines)
+            let fallbackBundleId = rawBundleId.trimmingCharacters(in: .whitespacesAndNewlines)
+            let resolvedBundleId = bundleId.isEmpty ? fallbackBundleId : bundleId
+            guard !resolvedBundleId.isEmpty else { continue }
+
+            var stats = value
+            stats.bundleId = resolvedBundleId
+            stats.keyPresses = max(0, stats.keyPresses)
+            stats.leftClicks = max(0, stats.leftClicks)
+            stats.rightClicks = max(0, stats.rightClicks)
+            stats.scrollDistance = stats.scrollDistance.isFinite ? max(0, stats.scrollDistance) : 0
+            normalized[resolvedBundleId] = stats
+        }
+
+        return normalized
     }
 
     private func scheduleSave() {

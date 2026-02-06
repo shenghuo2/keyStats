@@ -82,6 +82,7 @@
 "history.empty" = "无数据";
 
 "button.reset" = "重置统计";
+"button.importData" = "数据导入";
 "button.exportData" = "数据导出";
 "button.quit" = "退出应用";
 
@@ -100,6 +101,21 @@
 "export.savePanel.prompt" = "导出";
 "export.error.title" = "导出失败";
 "export.error.message" = "无法导出数据：%@";
+
+"import.openPanel.title" = "导入数据";
+"import.openPanel.message" = "选择要导入的 KeyStats 导出 JSON 文件";
+"import.openPanel.prompt" = "导入";
+"import.confirm.title" = "确认导入";
+"import.confirm.message" = "导入会覆盖所有已记录统计数据（今日和历史）。其他设置保持不变。";
+"import.confirm.confirm" = "导入并覆盖";
+"import.confirm.cancel" = "取消";
+"import.error.title" = "导入失败";
+"import.error.message" = "无法导入数据：%@";
+"import.error.invalidFormat" = "数据格式无效。";
+"import.error.unsupportedVersion" = "不支持的导出版本。";
+"import.error.emptyData" = "所选文件为空。";
+"import.success.title" = "导入完成";
+"import.success.message" = "统计数据已成功导入并覆盖。";
 
 "about.author" = "作者";
 "about.version" = "版本 %@ (%@)";

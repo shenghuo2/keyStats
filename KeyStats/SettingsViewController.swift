@@ -41,6 +41,7 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
     private var isHoveringHelpButton = false
     private var isHoveringHelpPopover = false
     private var resetButton: NSButton!
+    private var importButton: NSButton!
     private var exportButton: NSButton!
     private var mouseDistanceCalibrationButton: NSButton!
     private var showThresholdsButton: NSSwitch!
@@ -109,6 +110,13 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
     override func viewWillAppear() {
         super.viewWillAppear()
         updateState()
+    }
+
+    override func viewDidAppear() {
+        super.viewDidAppear()
+        DispatchQueue.main.async { [weak self] in
+            self?.view.window?.makeFirstResponder(nil)
+        }
     }
 
     override func viewDidLayout() {
@@ -287,6 +295,12 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
         exportButton.bezelStyle = .rounded
         exportButton.controlSize = .regular
 
+        importButton = NSButton(title: NSLocalizedString("button.importData", comment: ""),
+                                target: self,
+                                action: #selector(importData))
+        importButton.bezelStyle = .rounded
+        importButton.controlSize = .regular
+
         resetButton = NSButton(title: NSLocalizedString("button.reset", comment: ""),
                                target: self,
                                action: #selector(resetStats))
@@ -295,7 +309,7 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
         resetButton.bezelColor = nil
         resetButton.contentTintColor = nil
 
-        let actionStack = NSStackView(views: [mouseDistanceCalibrationButton, exportButton, resetButton])
+        let actionStack = NSStackView(views: [mouseDistanceCalibrationButton, importButton, exportButton, resetButton])
         actionStack.orientation = .horizontal
         actionStack.alignment = .centerY
         actionStack.spacing = 10
@@ -489,12 +503,13 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
     private func updateAppearance() {
         view.layer?.backgroundColor = resolvedCGColor(NSColor.windowBackgroundColor, for: view)
         view.window?.backgroundColor = resolvedColor(NSColor.windowBackgroundColor, for: view)
-        let isDarkMode = view.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-        let cardBackground = isDarkMode
-            ? NSColor(white: 0.18, alpha: 1.0)
-            : NSColor.controlBackgroundColor.withAlphaComponent(0.85)
+        let cardBackground = NSColor(
+            srgbRed: 247.0 / 255.0,
+            green: 247.0 / 255.0,
+            blue: 247.0 / 255.0,
+            alpha: 1.0
+        )
         let shadowColor = NSColor.black.withAlphaComponent(0.07)
-        let borderColor = NSColor.separatorColor.withAlphaComponent(0.16)
         let dividerColor = NSColor.separatorColor.withAlphaComponent(0.12)
         let optionDividerColor = NSColor.separatorColor.withAlphaComponent(0.14)
 
@@ -502,8 +517,8 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
             guard let layer = card.layer else { continue }
             layer.cornerRadius = 12
             layer.backgroundColor = resolvedCGColor(cardBackground, for: view)
-            layer.borderWidth = 0.5
-            layer.borderColor = resolvedCGColor(borderColor, for: view)
+            layer.borderWidth = 0
+            layer.borderColor = nil
             layer.shadowColor = resolvedCGColor(shadowColor, for: view)
             layer.shadowOpacity = 1
             layer.shadowRadius = 8
@@ -912,6 +927,29 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
         }
     }
 
+    @objc private func importData() {
+        let openPanel = NSOpenPanel()
+        openPanel.allowedFileTypes = ["json"]
+        openPanel.canChooseFiles = true
+        openPanel.canChooseDirectories = false
+        openPanel.allowsMultipleSelection = false
+        openPanel.title = NSLocalizedString("import.openPanel.title", comment: "")
+        openPanel.message = NSLocalizedString("import.openPanel.message", comment: "")
+        openPanel.prompt = NSLocalizedString("import.openPanel.prompt", comment: "")
+
+        guard let window = view.window else {
+            if openPanel.runModal() == .OK, let url = openPanel.url {
+                confirmAndImport(from: url)
+            }
+            return
+        }
+
+        openPanel.beginSheetModal(for: window) { [weak self] response in
+            guard response == .OK, let url = openPanel.url else { return }
+            self?.confirmAndImport(from: url)
+        }
+    }
+
     private func makeExportFileName() -> String {
         let dateString = exportFileDateFormatter.string(from: Date())
         return "KeyStats-Export-\(dateString).json"
@@ -926,10 +964,66 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
         }
     }
 
+    private func confirmAndImport(from url: URL) {
+        let alert = NSAlert()
+        let appIcon = NSImage(named: "AppIcon") ?? NSApp.applicationIconImage
+        alert.icon = appIcon
+        alert.messageText = NSLocalizedString("import.confirm.title", comment: "")
+        alert.informativeText = NSLocalizedString("import.confirm.message", comment: "")
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: NSLocalizedString("import.confirm.confirm", comment: ""))
+        alert.addButton(withTitle: NSLocalizedString("import.confirm.cancel", comment: ""))
+
+        if alert.runModal() == .alertFirstButtonReturn {
+            performImport(from: url)
+        }
+    }
+
+    private func performImport(from url: URL) {
+        do {
+            let data = try Data(contentsOf: url)
+            try StatsManager.shared.importStatsData(from: data)
+            PostHogSDK.shared.capture("statsImported")
+            showImportSuccess()
+        } catch {
+            showImportError(error)
+        }
+    }
+
+    private func showImportSuccess() {
+        let alert = NSAlert()
+        alert.messageText = NSLocalizedString(
+            "import.success.title",
+            tableName: nil,
+            bundle: .main,
+            value: "Import Complete",
+            comment: ""
+        )
+        alert.informativeText = NSLocalizedString(
+            "import.success.message",
+            tableName: nil,
+            bundle: .main,
+            value: "Statistics data has been imported and replaced successfully.",
+            comment: ""
+        )
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: NSLocalizedString("button.ok", comment: ""))
+        alert.runModal()
+    }
+
     private func showExportError(_ error: Error) {
         let alert = NSAlert()
         alert.messageText = NSLocalizedString("export.error.title", comment: "")
         alert.informativeText = String(format: NSLocalizedString("export.error.message", comment: ""), error.localizedDescription)
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: NSLocalizedString("button.ok", comment: ""))
+        alert.runModal()
+    }
+
+    private func showImportError(_ error: Error) {
+        let alert = NSAlert()
+        alert.messageText = NSLocalizedString("import.error.title", comment: "")
+        alert.informativeText = String(format: NSLocalizedString("import.error.message", comment: ""), error.localizedDescription)
         alert.alertStyle = .warning
         alert.addButton(withTitle: NSLocalizedString("button.ok", comment: ""))
         alert.runModal()

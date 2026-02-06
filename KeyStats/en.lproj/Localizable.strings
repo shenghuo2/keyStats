@@ -82,6 +82,7 @@
 "history.empty" = "No Data";
 
 "button.reset" = "Reset Stats";
+"button.importData" = "Import Data";
 "button.exportData" = "Export Data";
 "button.quit" = "Quit";
 
@@ -100,6 +101,21 @@
 "export.savePanel.prompt" = "Export";
 "export.error.title" = "Export Failed";
 "export.error.message" = "Couldn't export data: %@";
+
+"import.openPanel.title" = "Import Data";
+"import.openPanel.message" = "Choose a KeyStats export JSON file to import.";
+"import.openPanel.prompt" = "Import";
+"import.confirm.title" = "Confirm Import";
+"import.confirm.message" = "Importing will overwrite all recorded statistics data (today and history). Other settings will remain unchanged.";
+"import.confirm.confirm" = "Import and Overwrite";
+"import.confirm.cancel" = "Cancel";
+"import.error.title" = "Import Failed";
+"import.error.message" = "Couldn't import data: %@";
+"import.error.invalidFormat" = "Invalid data format.";
+"import.error.unsupportedVersion" = "Unsupported export version.";
+"import.error.emptyData" = "The selected file is empty.";
+"import.success.title" = "Import Complete";
+"import.success.message" = "Statistics data has been imported and replaced successfully.";
 
 "about.author" = "Author";
 "about.version" = "Version %@ (%@)";
