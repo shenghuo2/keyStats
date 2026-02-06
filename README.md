@@ -124,6 +124,22 @@ Clicking the menu bar icon opens the detailed statistics panel, showing:
 - **Reset Statistics**: Manually clear all statistics for today
 - **Quit Application**: Close KeyStats
 
+### Import & Export (Multi-device Sync)
+
+You can sync statistics across devices using JSON export/import.
+
+1. On device A, open Settings, click `Export Data`, and save the `.json` file.
+2. On device B, open Settings, click `Import Data`, and choose that file.
+3. Choose import mode:
+   - `Overwrite Existing Data`: Replace local statistics with imported data.
+   - `Merge and Add`: Merge imported data with local data and add totals by date.
+4. To combine both devices into B: export from A, then import on B with `Merge and Add`.
+5. Then export again from B, go back to A, and import with `Overwrite Existing Data` to make A and B consistent.
+
+Tips:
+- Export local data first as a backup before using overwrite.
+- Importing the same file with merge multiple times will add duplicate totals.
+
 ## Project Structure
 
 ### macOS
