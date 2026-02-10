@@ -503,19 +503,27 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
     private func updateAppearance() {
         view.layer?.backgroundColor = resolvedCGColor(NSColor.windowBackgroundColor, for: view)
         view.window?.backgroundColor = resolvedColor(NSColor.windowBackgroundColor, for: view)
-        let cardBackground = NSColor(
-            srgbRed: 247.0 / 255.0,
-            green: 247.0 / 255.0,
-            blue: 247.0 / 255.0,
+        let isDarkMode = view.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        let shadowColor = NSColor.black.withAlphaComponent(isDarkMode ? 0.2 : 0.07)
+        let dividerColor = NSColor.separatorColor.withAlphaComponent(isDarkMode ? 0.2 : 0.12)
+        let optionDividerColor = NSColor.separatorColor.withAlphaComponent(isDarkMode ? 0.24 : 0.14)
+        let darkSectionBaseColor = NSColor(
+            srgbRed: 39.0 / 255.0,
+            green: 43.0 / 255.0,
+            blue: 45.0 / 255.0,
             alpha: 1.0
         )
-        let shadowColor = NSColor.black.withAlphaComponent(0.07)
-        let dividerColor = NSColor.separatorColor.withAlphaComponent(0.12)
-        let optionDividerColor = NSColor.separatorColor.withAlphaComponent(0.14)
 
         for card in cardViews {
             guard let layer = card.layer else { continue }
             layer.cornerRadius = 12
+            layer.masksToBounds = false
+            let cardBackground: NSColor
+            if isDarkMode {
+                cardBackground = darkSectionBaseColor
+            } else {
+                cardBackground = NSColor.controlBackgroundColor.withAlphaComponent(0.88)
+            }
             layer.backgroundColor = resolvedCGColor(cardBackground, for: view)
             layer.borderWidth = 0
             layer.borderColor = nil
