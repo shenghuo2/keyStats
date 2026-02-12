@@ -452,13 +452,18 @@ class StatsManager {
 
         // 先初始化 currentStats 为默认值
         let calendar = Calendar.current
-        currentStats = DailyStats(date: calendar.startOfDay(for: Date()))
-        history = loadHistory()
-        
-        // 然后尝试加载保存的数据（使用静态方法）
-        if let savedStats = loadStats() {
-            if Calendar.current.isDateInToday(savedStats.date) {
-                currentStats = savedStats
+        let today = calendar.startOfDay(for: Date())
+        currentStats = DailyStats(date: today)
+        history = normalizedHistory(loadHistory())
+
+        // 优先加载 dailyStats；如果缺失或不是今天，回退到 history 里的今天数据。
+        let loadedCurrent = loadStats().map(normalizedDailyStats)
+        if let savedStats = loadedCurrent, calendar.isDate(savedStats.date, inSameDayAs: today) {
+            currentStats = savedStats
+        } else {
+            let todayKey = dateFormatter.string(from: today)
+            if let todayHistory = history[todayKey] {
+                currentStats = normalizedDailyStats(todayHistory)
             }
         }
 
