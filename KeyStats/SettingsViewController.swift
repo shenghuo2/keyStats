@@ -14,6 +14,14 @@ private func resolvedColor(_ color: NSColor, for view: NSView) -> NSColor {
     return NSColor(cgColor: cgColor) ?? color
 }
 
+private func resolvedCGColor(_ color: NSColor, alpha: CGFloat, for view: NSView) -> CGColor {
+    var resolved: CGColor = color.cgColor
+    view.effectiveAppearance.performAsCurrentDrawingAppearance {
+        resolved = color.withAlphaComponent(alpha).cgColor
+    }
+    return resolved
+}
+
 final class SettingsViewController: NSViewController, NSTextFieldDelegate {
 
     private var scrollView: NSScrollView!
@@ -56,6 +64,9 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
     private var cardViews: [NSView] = []
     private var dividerViews: [NSView] = []
     private var optionDividerViews: [NSView] = []
+    private var appearanceObservation: NSKeyValueObservation?
+    private var systemThemeObserver: NSObjectProtocol?
+    private var appDidBecomeActiveObserver: NSObjectProtocol?
 
     private let thresholdMinimum = 0
     private let thresholdMaximum = 1_000_000
@@ -105,11 +116,34 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
         setupUI()
         updateState()
         updateAppearance()
+        appearanceObservation = NSApp.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
+            DispatchQueue.main.async {
+                self?.updateAppearance()
+            }
+        }
+        systemThemeObserver = DistributedNotificationCenter.default().addObserver(
+            forName: Notification.Name("AppleInterfaceThemeChangedNotification"),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.updateAppearance()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+                self?.updateAppearance()
+            }
+        }
+        appDidBecomeActiveObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.updateAppearance()
+        }
     }
 
     override func viewWillAppear() {
         super.viewWillAppear()
         updateState()
+        updateAppearance()
     }
 
     override func viewDidAppear() {
@@ -123,6 +157,16 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
         super.viewDidLayout()
         updateHelpButtonTrackingArea()
         updateHelpPopoverTrackingArea()
+    }
+
+    deinit {
+        appearanceObservation = nil
+        if let observer = systemThemeObserver {
+            DistributedNotificationCenter.default().removeObserver(observer)
+        }
+        if let observer = appDidBecomeActiveObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 
     // MARK: - UI
@@ -502,11 +546,11 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
 
     private func updateAppearance() {
         view.layer?.backgroundColor = resolvedCGColor(NSColor.windowBackgroundColor, for: view)
-        view.window?.backgroundColor = resolvedColor(NSColor.windowBackgroundColor, for: view)
+        view.window?.backgroundColor = NSColor.windowBackgroundColor
         let isDarkMode = view.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
         let shadowColor = NSColor.black.withAlphaComponent(isDarkMode ? 0.2 : 0.07)
-        let dividerColor = NSColor.separatorColor.withAlphaComponent(isDarkMode ? 0.2 : 0.12)
-        let optionDividerColor = NSColor.separatorColor.withAlphaComponent(isDarkMode ? 0.24 : 0.14)
+        let dividerAlpha: CGFloat = isDarkMode ? 0.2 : 0.12
+        let optionDividerAlpha: CGFloat = isDarkMode ? 0.24 : 0.14
         let darkSectionBaseColor = NSColor(
             srgbRed: 39.0 / 255.0,
             green: 43.0 / 255.0,
@@ -518,13 +562,11 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
             guard let layer = card.layer else { continue }
             layer.cornerRadius = 12
             layer.masksToBounds = false
-            let cardBackground: NSColor
             if isDarkMode {
-                cardBackground = darkSectionBaseColor
+                layer.backgroundColor = resolvedCGColor(darkSectionBaseColor, for: view)
             } else {
-                cardBackground = NSColor.controlBackgroundColor.withAlphaComponent(0.88)
+                layer.backgroundColor = resolvedCGColor(NSColor.controlBackgroundColor, alpha: 0.88, for: view)
             }
-            layer.backgroundColor = resolvedCGColor(cardBackground, for: view)
             layer.borderWidth = 0
             layer.borderColor = nil
             layer.shadowColor = resolvedCGColor(shadowColor, for: view)
@@ -534,11 +576,11 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
         }
 
         for divider in dividerViews {
-            divider.layer?.backgroundColor = resolvedCGColor(dividerColor, for: view)
+            divider.layer?.backgroundColor = resolvedCGColor(NSColor.separatorColor, alpha: dividerAlpha, for: view)
         }
 
         for divider in optionDividerViews {
-            divider.layer?.backgroundColor = resolvedCGColor(optionDividerColor, for: view)
+            divider.layer?.backgroundColor = resolvedCGColor(NSColor.separatorColor, alpha: optionDividerAlpha, for: view)
         }
     }
 

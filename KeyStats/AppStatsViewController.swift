@@ -437,11 +437,19 @@ final class AppStatsViewController: NSViewController {
 
 final class AppearanceTrackingView: NSView {
     var onEffectiveAppearanceChange: (() -> Void)?
+    private var appearanceChangeToken = UUID()
 
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
-        DispatchQueue.main.async { [weak self] in
-            self?.onEffectiveAppearanceChange?()
+        appearanceChangeToken = UUID()
+        let currentToken = appearanceChangeToken
+        let refreshDelays: [TimeInterval] = [0, 0.05, 0.15, 0.3]
+
+        for delay in refreshDelays {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                guard let self = self, self.appearanceChangeToken == currentToken else { return }
+                self.onEffectiveAppearanceChange?()
+            }
         }
     }
 }

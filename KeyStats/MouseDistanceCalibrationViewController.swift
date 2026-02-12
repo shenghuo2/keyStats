@@ -1,5 +1,21 @@
 import Cocoa
 
+private func resolvedCGColor(_ color: NSColor, for view: NSView) -> CGColor {
+    var resolved: CGColor = color.cgColor
+    view.effectiveAppearance.performAsCurrentDrawingAppearance {
+        resolved = color.cgColor
+    }
+    return resolved
+}
+
+private func resolvedCGColor(_ color: NSColor, alpha: CGFloat, for view: NSView) -> CGColor {
+    var resolved: CGColor = color.cgColor
+    view.effectiveAppearance.performAsCurrentDrawingAppearance {
+        resolved = color.withAlphaComponent(alpha).cgColor
+    }
+    return resolved
+}
+
 final class MouseDistanceCalibrationViewController: NSViewController {
     private var titleLabel: NSTextField!
     private var instructionLabel: NSTextField!
@@ -8,23 +24,44 @@ final class MouseDistanceCalibrationViewController: NSViewController {
     private var resultLabel: NSTextField!
     private var retryButton: NSButton!
     private var closeButton: NSButton!
+    private var pixelContainer: NSView!
     private var updateTimer: Timer?
+    private var appearanceObservation: NSKeyValueObservation?
     private var hasCompleted = false
 
     override func loadView() {
-        let mainView = NSView(frame: NSRect(x: 0, y: 0, width: 360, height: 240))
+        let mainView = AppearanceTrackingView(frame: NSRect(x: 0, y: 0, width: 360, height: 240))
+        mainView.onEffectiveAppearanceChange = { [weak self] in
+            self?.updateAppearance()
+        }
         mainView.wantsLayer = true
+        mainView.layer?.backgroundColor = resolvedCGColor(NSColor.windowBackgroundColor, for: mainView)
         view = mainView
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
         setupUI()
+        updateAppearance()
+        appearanceObservation = NSApp.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
+            DispatchQueue.main.async {
+                self?.updateAppearance()
+            }
+        }
+    }
+
+    override func viewWillAppear() {
+        super.viewWillAppear()
+        updateAppearance()
     }
 
     override func viewWillDisappear() {
         super.viewWillDisappear()
         cleanup()
+    }
+
+    deinit {
+        appearanceObservation = nil
     }
 
     func prepareForDisplay() {
@@ -48,12 +85,10 @@ final class MouseDistanceCalibrationViewController: NSViewController {
         pixelLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 28, weight: .medium)
         pixelLabel.alignment = .center
 
-        let pixelContainer = NSView()
+        pixelContainer = NSView()
         pixelContainer.wantsLayer = true
-        pixelContainer.layer?.backgroundColor = NSColor.controlBackgroundColor.withAlphaComponent(0.7).cgColor
         pixelContainer.layer?.cornerRadius = 10
         pixelContainer.layer?.borderWidth = 0.5
-        pixelContainer.layer?.borderColor = NSColor.separatorColor.withAlphaComponent(0.18).cgColor
         pixelContainer.translatesAutoresizingMaskIntoConstraints = false
 
         pixelLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -112,6 +147,13 @@ final class MouseDistanceCalibrationViewController: NSViewController {
             instructionLabel.widthAnchor.constraint(equalTo: contentStack.widthAnchor),
             resultLabel.widthAnchor.constraint(equalTo: contentStack.widthAnchor)
         ])
+    }
+
+    private func updateAppearance() {
+        view.layer?.backgroundColor = resolvedCGColor(NSColor.windowBackgroundColor, for: view)
+        view.window?.backgroundColor = NSColor.windowBackgroundColor
+        pixelContainer?.layer?.backgroundColor = resolvedCGColor(NSColor.controlBackgroundColor, alpha: 0.7, for: pixelContainer ?? view)
+        pixelContainer?.layer?.borderColor = resolvedCGColor(NSColor.separatorColor, alpha: 0.18, for: pixelContainer ?? view)
     }
 
     private func restartCalibration() {

@@ -4,12 +4,18 @@ final class HoverIconButton: NSButton {
     var padding: CGFloat = 8 {
         didSet { invalidateIntrinsicContentSize() }
     }
-    var hoverBackgroundColor: NSColor = NSColor.systemGray.withAlphaComponent(0.2)
+    var hoverBackgroundColor: NSColor = .systemGray {
+        didSet { applyHoverBackground() }
+    }
+    var hoverBackgroundAlpha: CGFloat = 0.2 {
+        didSet { applyHoverBackground() }
+    }
     var cornerRadius: CGFloat = 6 {
         didSet { layer?.cornerRadius = cornerRadius }
     }
 
     private var trackingArea: NSTrackingArea?
+    private var isHovered = false
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -47,6 +53,11 @@ final class HoverIconButton: NSButton {
         setHovered(false)
     }
 
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        applyHoverBackground()
+    }
+
     private func commonInit() {
         wantsLayer = true
         layer?.cornerRadius = cornerRadius
@@ -54,7 +65,22 @@ final class HoverIconButton: NSButton {
         layer?.backgroundColor = NSColor.clear.cgColor
     }
 
+    private func resolvedCGColor(_ color: NSColor, alpha: CGFloat) -> CGColor {
+        var resolved: CGColor = color.cgColor
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            resolved = color.withAlphaComponent(alpha).cgColor
+        }
+        return resolved
+    }
+
+    private func applyHoverBackground() {
+        layer?.backgroundColor = isHovered
+            ? resolvedCGColor(hoverBackgroundColor, alpha: hoverBackgroundAlpha)
+            : NSColor.clear.cgColor
+    }
+
     private func setHovered(_ hovered: Bool) {
-        layer?.backgroundColor = hovered ? hoverBackgroundColor.cgColor : NSColor.clear.cgColor
+        isHovered = hovered
+        applyHoverBackground()
     }
 }

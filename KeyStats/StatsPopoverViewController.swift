@@ -2,6 +2,22 @@ import Cocoa
 import PostHog
 import SwiftUI
 
+private func resolvedCGColor(_ color: NSColor, for view: NSView) -> CGColor {
+    var resolved: CGColor = color.cgColor
+    view.effectiveAppearance.performAsCurrentDrawingAppearance {
+        resolved = color.cgColor
+    }
+    return resolved
+}
+
+private func resolvedCGColor(_ color: NSColor, alpha: CGFloat, for view: NSView) -> CGColor {
+    var resolved: CGColor = color.cgColor
+    view.effectiveAppearance.performAsCurrentDrawingAppearance {
+        resolved = color.withAlphaComponent(alpha).cgColor
+    }
+    return resolved
+}
+
 /// 统计详情弹出视图控制器
 class StatsPopoverViewController: NSViewController {
     
@@ -439,9 +455,9 @@ class StatsPopoverViewController: NSViewController {
         let view = NSView()
         view.wantsLayer = true
         // 在 Dark Mode 下使用更高的透明度以提高可见性
-        let isDarkMode = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        let isDarkMode = self.view.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
         let alpha: CGFloat = isDarkMode ? 0.35 : 0.15
-        view.layer?.backgroundColor = NSColor.separatorColor.withAlphaComponent(alpha).cgColor
+        view.layer?.backgroundColor = resolvedCGColor(NSColor.separatorColor, alpha: alpha, for: self.view)
         view.translatesAutoresizingMaskIntoConstraints = false
         view.widthAnchor.constraint(equalToConstant: 1).isActive = true
         return view
@@ -630,7 +646,7 @@ class StatsPopoverViewController: NSViewController {
     private func updateKeyBreakdownSeparatorColors() {
         let isDarkMode = view.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
         let alpha: CGFloat = isDarkMode ? 0.35 : 0.15
-        let separatorColor = NSColor.separatorColor.withAlphaComponent(alpha).cgColor
+        let separatorColor = resolvedCGColor(NSColor.separatorColor, alpha: alpha, for: view)
         keyBreakdownSeparators.forEach { $0.layer?.backgroundColor = separatorColor }
     }
     
@@ -1209,7 +1225,7 @@ class StatsChartView: NSView {
         let plotRect = plotRect(in: backgroundRect)
 
         // 在 Dark Mode 下使用更高的透明度以提高可见性
-        let isDarkMode = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        let isDarkMode = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
         let gridAlpha: CGFloat = isDarkMode ? 0.5 : 0.35
         let axisAlpha: CGFloat = isDarkMode ? 0.75 : 0.6
         let backgroundAlpha: CGFloat = isDarkMode ? 0.25 : 0.15
