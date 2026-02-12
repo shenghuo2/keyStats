@@ -79,6 +79,14 @@ Issue type?
 - ✅ Localize user-facing strings with `NSLocalizedString()`
 - ✅ Ensure UI colors adapt to dark mode (use dynamic colors + `resolvedCGColor`/`resolvedColor`)
 
+### 🌗 Dark/Light Theme Switching Notes (Critical)
+- ✅ `CALayer.backgroundColor` / `borderColor` use `CGColor` (a static snapshot) and do not automatically follow appearance changes
+- ✅ Do not cache `NSColor.controlBackgroundColor.withAlphaComponent(...)` and reuse it across updates (especially when launched in dark mode), as it may lock in the old appearance
+- ✅ For "dynamic system color + alpha", always resolve under the current `effectiveAppearance` using a helper, e.g. `resolvedCGColor(color, alpha:for:)`
+- ✅ Re-assign layer colors on every theme change; do not rely on existing `CGColor` values to auto-update
+- ✅ Prefer multi-source appearance refresh triggers: `AppearanceTrackingView`, `NSApp.effectiveAppearance`, `AppleInterfaceThemeChangedNotification`, and `NSApplication.didBecomeActiveNotification`
+- ✅ When debugging theme issues, log `app/view/window` appearance plus final layer RGBA first to distinguish "trigger path issues" from "color resolution issues"
+
 ### 🟢 RECOMMENDED (Best Practices)
 - ✅ Document public APIs with `///` comments
 - ✅ Use `private` for internal implementation details
