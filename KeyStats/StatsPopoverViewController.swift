@@ -1233,9 +1233,15 @@ class StatsChartView: NSView {
         didSet {
             if hoverIndex != oldValue {
                 needsDisplay = true
+                updateHoverLabels()
             }
         }
     }
+
+    private lazy var hoverYBlurView: NSVisualEffectView = makeHoverBlurView()
+    private lazy var hoverYTextField: NSTextField = makeHoverTextField(parent: hoverYBlurView)
+    private lazy var hoverDateBlurView: NSVisualEffectView = makeHoverBlurView()
+    private lazy var hoverDateTextField: NSTextField = makeHoverTextField(parent: hoverDateBlurView)
     
     private var trackingArea: NSTrackingArea?
     private let transitionDuration: CFTimeInterval = 0.22
@@ -1299,7 +1305,7 @@ class StatsChartView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
 
-        let backgroundRect = bounds.insetBy(dx: 6, dy: 6)
+        let backgroundRect = bounds.insetBy(dx: 0, dy: 6)
         let plotRect = plotRect(in: backgroundRect)
 
         // 在 Dark Mode 下使用更高的透明度以提高可见性
@@ -1393,7 +1399,12 @@ class StatsChartView: NSView {
         let y = rect.minY - 14
         var indices = Array(stride(from: 0, to: count, by: step))
         if indices.last != count - 1 {
-            indices.append(count - 1)
+            // 如果最后一个 stride 索引与末尾太近，替换而非追加，避免标签重叠
+            if let last = indices.last, (count - 1 - last) < step / 2, indices.count > 1 {
+                indices[indices.count - 1] = count - 1
+            } else {
+                indices.append(count - 1)
+            }
         }
         for index in indices {
             let text = labels[index]
@@ -1533,7 +1544,7 @@ class StatsChartView: NSView {
         let value = series[hoverIndex].value
         let x = xPositions[hoverIndex]
         let y = yPosition(for: value, in: rect, maxValue: maxValue)
-        
+
         let crosshairColor = NSColor.systemBlue.withAlphaComponent(0.25)
         let crosshairPath = NSBezierPath()
         crosshairPath.move(to: NSPoint(x: x, y: rect.minY))
@@ -1543,7 +1554,7 @@ class StatsChartView: NSView {
         crosshairColor.setStroke()
         crosshairPath.lineWidth = 1
         crosshairPath.stroke()
-        
+
         let radius: CGFloat = 5
         let dotRect = NSRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2)
         let dot = NSBezierPath(ovalIn: dotRect)
@@ -1552,16 +1563,8 @@ class StatsChartView: NSView {
         NSColor.white.withAlphaComponent(0.9).setStroke()
         dot.lineWidth = 2
         dot.stroke()
-        
-        let hoverAttributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 10, weight: .semibold),
-            .foregroundColor: NSColor.labelColor
-        ]
-        
-        drawLabel(formatValue(value), at: NSPoint(x: rect.minX - 4, y: y), alignment: .right, attributes: hoverAttributes)
-        
-        let dateLabel = dateLabel(for: series[hoverIndex].date)
-        drawClampedLabel(dateLabel, center: NSPoint(x: x, y: rect.minY - 14), within: backgroundRect, attributes: hoverAttributes)
+
+        // hover 标签通过 NSVisualEffectView 子视图绘制，见 updateHoverLabels()
     }
     
     private func updateHoverIndex(for location: NSPoint) {
@@ -1569,7 +1572,7 @@ class StatsChartView: NSView {
             hoverIndex = nil
             return
         }
-        let backgroundRect = bounds.insetBy(dx: 6, dy: 6)
+        let backgroundRect = bounds.insetBy(dx: 0, dy: 6)
         let rect = plotRect(in: backgroundRect)
         guard rect.contains(location) else {
             hoverIndex = nil
@@ -1659,6 +1662,87 @@ class StatsChartView: NSView {
         x = min(max(x, rect.minX), rect.maxX - size.width)
         let y = center.y - size.height / 2
         text.draw(at: NSPoint(x: x, y: y), withAttributes: attributes)
+    }
+
+    private func makeHoverBlurView() -> NSVisualEffectView {
+        let v = NSVisualEffectView()
+        v.material = .popover
+        v.blendingMode = .withinWindow
+        v.state = .active
+        v.wantsLayer = true
+        v.layer?.cornerRadius = 4
+        v.layer?.masksToBounds = true
+        v.isHidden = true
+        addSubview(v)
+        return v
+    }
+
+    private func makeHoverTextField(parent: NSVisualEffectView) -> NSTextField {
+        let label = NSTextField(labelWithString: "")
+        label.font = NSFont.systemFont(ofSize: 10, weight: .semibold)
+        label.textColor = .labelColor
+        label.backgroundColor = .clear
+        label.drawsBackground = false
+        label.isBezeled = false
+        label.isEditable = false
+        label.isSelectable = false
+        parent.addSubview(label)
+        return label
+    }
+
+    private func updateHoverLabels() {
+        guard let hoverIndex = hoverIndex, hoverIndex >= 0, hoverIndex < series.count else {
+            hoverYBlurView.isHidden = true
+            hoverDateBlurView.isHidden = true
+            return
+        }
+
+        let backgroundRect = bounds.insetBy(dx: 0, dy: 6)
+        let rect = plotRect(in: backgroundRect)
+        guard let maxValue = series.map({ $0.value }).max(), maxValue > 0 else {
+            hoverYBlurView.isHidden = true
+            hoverDateBlurView.isHidden = true
+            return
+        }
+
+        let xPos = xPositions(in: rect)
+        let x = xPos[hoverIndex]
+        let value = series[hoverIndex].value
+        let y = yPosition(for: value, in: rect, maxValue: maxValue)
+        let padding: CGFloat = 3
+
+        // Y 轴数值标签
+        let valueText = formatValue(value)
+        hoverYTextField.stringValue = valueText
+        hoverYTextField.sizeToFit()
+        let ySize = hoverYTextField.fittingSize
+        let yLabelOriginX = rect.minX - 4 - ySize.width
+        let yLabelOriginY = y - ySize.height / 2
+        hoverYBlurView.frame = NSRect(
+            x: yLabelOriginX - padding,
+            y: yLabelOriginY - padding,
+            width: ySize.width + padding * 2,
+            height: ySize.height + padding * 2
+        )
+        hoverYTextField.frame = NSRect(x: padding, y: padding, width: ySize.width, height: ySize.height)
+        hoverYBlurView.isHidden = false
+
+        // X 轴日期标签
+        let dateText = dateLabel(for: series[hoverIndex].date)
+        hoverDateTextField.stringValue = dateText
+        hoverDateTextField.sizeToFit()
+        let dateSize = hoverDateTextField.fittingSize
+        var dateX = x - dateSize.width / 2
+        dateX = min(max(dateX, backgroundRect.minX), backgroundRect.maxX - dateSize.width)
+        let dateY = rect.minY - 14 - dateSize.height / 2
+        hoverDateBlurView.frame = NSRect(
+            x: dateX - padding,
+            y: dateY - padding,
+            width: dateSize.width + padding * 2,
+            height: dateSize.height + padding * 2
+        )
+        hoverDateTextField.frame = NSRect(x: padding, y: padding, width: dateSize.width, height: dateSize.height)
+        hoverDateBlurView.isHidden = false
     }
 
     private func addSlideTransition(direction: SlideDirection) {
