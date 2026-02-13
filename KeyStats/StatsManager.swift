@@ -1414,10 +1414,12 @@ extension StatsManager {
     }
     
     private func formatScrollDistance(_ distance: Double) -> String {
-        if distance >= 10000 {
+        if distance >= 1_000_000 {
+            return String(format: "%.1f MPx", distance / 1_000_000)
+        } else if distance >= 1000 {
             return String(format: "%.1f kPx", distance / 1000)
         } else {
-            return String(format: "%.0f px", distance)
+            return String(format: "%.0f Px", distance)
         }
     }
     

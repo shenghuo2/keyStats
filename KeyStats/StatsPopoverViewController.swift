@@ -1306,7 +1306,6 @@ class StatsChartView: NSView {
         super.draw(dirtyRect)
 
         let backgroundRect = bounds.insetBy(dx: 0, dy: 6)
-        let plotRect = plotRect(in: backgroundRect)
 
         // 在 Dark Mode 下使用更高的透明度以提高可见性
         let isDarkMode = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
@@ -1319,7 +1318,7 @@ class StatsChartView: NSView {
 
         NSColor.controlBackgroundColor.withAlphaComponent(backgroundAlpha).setFill()
         NSBezierPath(roundedRect: backgroundRect, xRadius: 6, yRadius: 6).fill()
-        
+
         guard let maxValue = series.map({ $0.value }).max(), maxValue > 0 else {
             let text = NSLocalizedString("history.empty", comment: "")
             let attributes: [NSAttributedString.Key: Any] = [
@@ -1331,7 +1330,8 @@ class StatsChartView: NSView {
             text.draw(at: point, withAttributes: attributes)
             return
         }
-        
+
+        let plotRect = plotRect(in: backgroundRect, maxValue: maxValue)
         drawGrid(in: plotRect, color: gridColor)
         drawAxes(in: plotRect, color: axisColor)
         drawAxisLabels(in: plotRect, maxValue: maxValue)
@@ -1573,7 +1573,8 @@ class StatsChartView: NSView {
             return
         }
         let backgroundRect = bounds.insetBy(dx: 0, dy: 6)
-        let rect = plotRect(in: backgroundRect)
+        let maxValue = series.map({ $0.value }).max() ?? 0
+        let rect = plotRect(in: backgroundRect, maxValue: maxValue)
         guard rect.contains(location) else {
             hoverIndex = nil
             return
@@ -1591,8 +1592,22 @@ class StatsChartView: NSView {
         hoverIndex = nearestIndex
     }
     
-    private func plotRect(in rect: NSRect) -> NSRect {
-        let leftPadding: CGFloat = 36
+    private func plotRect(in rect: NSRect, maxValue: Double? = nil) -> NSRect {
+        let labelAttributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 10)
+        ]
+        let leftPadding: CGFloat
+        if let maxValue = maxValue, maxValue > 0 {
+            let maxLabel = formatValue(maxValue)
+            let midLabel = formatValue(maxValue / 2)
+            let maxWidth = max(
+                maxLabel.size(withAttributes: labelAttributes).width,
+                midLabel.size(withAttributes: labelAttributes).width
+            )
+            leftPadding = ceil(maxWidth) + 8
+        } else {
+            leftPadding = 36
+        }
         let rightPadding: CGFloat = 10
         let topPadding: CGFloat = 10
         let bottomPadding: CGFloat = 20
@@ -1698,8 +1713,13 @@ class StatsChartView: NSView {
         }
 
         let backgroundRect = bounds.insetBy(dx: 0, dy: 6)
-        let rect = plotRect(in: backgroundRect)
         guard let maxValue = series.map({ $0.value }).max(), maxValue > 0 else {
+            hoverYBlurView.isHidden = true
+            hoverDateBlurView.isHidden = true
+            return
+        }
+        let rect = plotRect(in: backgroundRect, maxValue: maxValue)
+        guard !rect.isEmpty else {
             hoverYBlurView.isHidden = true
             hoverDateBlurView.isHidden = true
             return
