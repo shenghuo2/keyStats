@@ -893,10 +893,10 @@ class StatItemView: NSView {
         
         // 布局
         NSLayoutConstraint.activate([
-            heightAnchor.constraint(equalToConstant: 28),
-            
             iconLabel.leadingAnchor.constraint(equalTo: leadingAnchor),
             iconLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            iconLabel.topAnchor.constraint(equalTo: topAnchor, constant: 4),
+            iconLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -4),
             iconLabel.widthAnchor.constraint(equalToConstant: 24),
             
             titleLabel.leadingAnchor.constraint(equalTo: iconLabel.trailingAnchor, constant: 4),
