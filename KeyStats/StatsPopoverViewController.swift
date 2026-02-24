@@ -228,7 +228,33 @@ class StatsPopoverViewController: NSViewController {
         // 键位统计标题
         keyBreakdownTitleLabel = createLabel(text: NSLocalizedString("section.keyBreakdown", comment: ""), fontSize: 14, weight: .semibold)
         keyBreakdownTitleLabel.translatesAutoresizingMaskIntoConstraints = false
-        containerView.addSubview(keyBreakdownTitleLabel)
+
+        let heatmapEntryTitle = isChinese ? "热力图" : "Heatmap"
+        let heatmapTooltipTitle = isChinese ? "键盘热力图" : "Keyboard Heatmap"
+        keyboardHeatmapButton = NSButton(title: heatmapEntryTitle, target: self, action: #selector(showKeyboardHeatmap))
+        keyboardHeatmapButton.bezelStyle = .rounded
+        keyboardHeatmapButton.controlSize = .small
+        keyboardHeatmapButton.font = NSFont.systemFont(ofSize: 12, weight: .medium)
+        keyboardHeatmapButton.toolTip = heatmapTooltipTitle
+        keyboardHeatmapButton.setAccessibilityLabel(heatmapTooltipTitle)
+        keyboardHeatmapButton.translatesAutoresizingMaskIntoConstraints = false
+        keyboardHeatmapButton.setContentHuggingPriority(.required, for: .horizontal)
+        keyboardHeatmapButton.setContentCompressionResistancePriority(.required, for: .horizontal)
+
+        let keyBreakdownHeaderStack = NSStackView()
+        keyBreakdownHeaderStack.orientation = .horizontal
+        keyBreakdownHeaderStack.alignment = .centerY
+        keyBreakdownHeaderStack.spacing = 8
+        keyBreakdownHeaderStack.translatesAutoresizingMaskIntoConstraints = false
+
+        let keyBreakdownHeaderSpacer = NSView()
+        keyBreakdownHeaderSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        keyBreakdownHeaderSpacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        keyBreakdownHeaderStack.addArrangedSubview(keyBreakdownTitleLabel)
+        keyBreakdownHeaderStack.addArrangedSubview(keyBreakdownHeaderSpacer)
+        keyBreakdownHeaderStack.addArrangedSubview(keyboardHeatmapButton)
+        containerView.addSubview(keyBreakdownHeaderStack)
 
         // 键位统计列表（最多 3 列，每列 5 个）
         keyBreakdownGridStack = NSStackView()
@@ -405,25 +431,6 @@ class StatsPopoverViewController: NSViewController {
             allTimeStatsButton.heightAnchor.constraint(equalToConstant: 28)
         ])
 
-        keyboardHeatmapButton = makeSymbolButton(systemName: "keyboard",
-                                                 fallbackTitle: NSLocalizedString("keyboardHeatmap.button", comment: ""),
-                                                 pointSize: 16,
-                                                 weight: .semibold,
-                                                 action: #selector(showKeyboardHeatmap))
-        keyboardHeatmapButton.toolTip = NSLocalizedString("keyboardHeatmap.button", comment: "")
-        keyboardHeatmapButton.setAccessibilityLabel(NSLocalizedString("keyboardHeatmap.button", comment: ""))
-        keyboardHeatmapButton.imageScaling = .scaleProportionallyDown
-        keyboardHeatmapButton.setContentHuggingPriority(.required, for: .horizontal)
-        keyboardHeatmapButton.setContentCompressionResistancePriority(.required, for: .horizontal)
-        if let hoverButton = keyboardHeatmapButton as? HoverIconButton {
-            hoverButton.padding = 4
-            hoverButton.cornerRadius = 6
-        }
-        NSLayoutConstraint.activate([
-            keyboardHeatmapButton.widthAnchor.constraint(equalToConstant: 28),
-            keyboardHeatmapButton.heightAnchor.constraint(equalToConstant: 28)
-        ])
-
         let footerStack = NSStackView()
         footerStack.orientation = .horizontal
         footerStack.alignment = .bottom
@@ -440,7 +447,6 @@ class StatsPopoverViewController: NSViewController {
         footerStack.addArrangedSubview(settingsButton)
         footerStack.addArrangedSubview(appStatsButton)
         footerStack.addArrangedSubview(allTimeStatsButton)
-        footerStack.addArrangedSubview(keyboardHeatmapButton)
         footerStack.setCustomSpacing(6, after: settingsButton)
         footerStack.setCustomSpacing(6, after: appStatsButton)
         footerStack.setCustomSpacing(6, after: allTimeStatsButton)
@@ -469,10 +475,11 @@ class StatsPopoverViewController: NSViewController {
             statsStackView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
             
             // 键位统计
-            keyBreakdownTitleLabel.topAnchor.constraint(equalTo: statsStackView.bottomAnchor, constant: 16),
-            keyBreakdownTitleLabel.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            keyBreakdownHeaderStack.topAnchor.constraint(equalTo: statsStackView.bottomAnchor, constant: 8),
+            keyBreakdownHeaderStack.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
+            keyBreakdownHeaderStack.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
 
-            keyBreakdownGridStack.topAnchor.constraint(equalTo: keyBreakdownTitleLabel.bottomAnchor, constant: 8),
+            keyBreakdownGridStack.topAnchor.constraint(equalTo: keyBreakdownHeaderStack.bottomAnchor, constant: 8),
             keyBreakdownGridStack.leadingAnchor.constraint(equalTo: containerView.leadingAnchor, constant: 16),
             keyBreakdownGridStack.trailingAnchor.constraint(equalTo: containerView.trailingAnchor, constant: -16),
             keyBreakdownGridStack.heightAnchor.constraint(equalToConstant: 124),
@@ -874,18 +881,19 @@ class StatsPopoverViewController: NSViewController {
             settingsButton.fittingSize.height,
             appStatsButton.fittingSize.height,
             allTimeStatsButton.fittingSize.height,
-            keyboardHeatmapButton.fittingSize.height,
             quitButton.fittingSize.height,
             checkUpdatesButton.isHidden ? 0 : checkUpdatesButton.fittingSize.height
         )
+
+        let keyBreakdownHeaderHeight = max(keyBreakdownTitleLabel.fittingSize.height, keyboardHeatmapButton.fittingSize.height)
 
         let computedHeight =
             16 + titleLabel.fittingSize.height +
             12 + // title -> separator
             12 + // separator -> stats stack
             statsRowsHeight + statsSpacing +
-            16 + // stats stack -> key breakdown title
-            keyBreakdownTitleLabel.fittingSize.height +
+            8 + // stats stack -> key breakdown title
+            keyBreakdownHeaderHeight +
             8 + // key breakdown title -> grid
             keyBreakdownGridHeight +
             16 + // grid -> history title
