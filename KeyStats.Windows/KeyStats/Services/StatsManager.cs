@@ -933,6 +933,13 @@ public class StatsManager : IDisposable
 
     public enum AppStatsRange { Today, Week, Month, All }
 
+    public sealed class KeyboardHeatmapDay
+    {
+        public DateTime Date { get; set; }
+        public int TotalKeyPresses { get; set; }
+        public Dictionary<string, int> KeyCounts { get; set; } = new(StringComparer.Ordinal);
+    }
+
     public List<AppStats> GetAppStatsSummary(AppStatsRange range)
     {
         lock (_lock)
@@ -948,6 +955,46 @@ public class StatsManager : IDisposable
             return totals.Values
                 .Select(a => new AppStats(a))
                 .ToList();
+        }
+    }
+
+    public (DateTime Start, DateTime End) GetKeyboardHeatmapDateBounds()
+    {
+        lock (_lock)
+        {
+            var today = DateTime.Today;
+            DateTime? earliest = null;
+
+            ConsiderKeyboardActivityDate(CurrentStats, today, ref earliest);
+
+            foreach (var daily in History.Values)
+            {
+                ConsiderKeyboardActivityDate(daily, today, ref earliest);
+            }
+
+            var start = earliest ?? today;
+            if (start > today)
+            {
+                start = today;
+            }
+            return (start, today);
+        }
+    }
+
+    public KeyboardHeatmapDay GetKeyboardHeatmapDay(DateTime date)
+    {
+        var normalizedDate = date.Date;
+        lock (_lock)
+        {
+            var daily = GetDailyStats(normalizedDate);
+            var aggregated = AggregateKeyboardHeatmapCounts(daily.KeyPressCounts);
+
+            return new KeyboardHeatmapDay
+            {
+                Date = normalizedDate,
+                TotalKeyPresses = Math.Max(0, daily.KeyPresses),
+                KeyCounts = aggregated
+            };
         }
     }
 
@@ -997,6 +1044,221 @@ public class StatsManager : IDisposable
 
         var key = date.ToString("yyyy-MM-dd");
         return History.TryGetValue(key, out var stats) ? stats : new DailyStats(date);
+    }
+
+    private static void ConsiderKeyboardActivityDate(DailyStats daily, DateTime today, ref DateTime? earliest)
+    {
+        if (!HasKeyboardActivity(daily))
+        {
+            return;
+        }
+
+        var candidate = daily.Date.Date;
+        if (candidate > today)
+        {
+            return;
+        }
+
+        if (!earliest.HasValue || candidate < earliest.Value)
+        {
+            earliest = candidate;
+        }
+    }
+
+    private static bool HasKeyboardActivity(DailyStats daily)
+    {
+        return daily.KeyPresses > 0 || daily.KeyPressCounts.Count > 0;
+    }
+
+    private static Dictionary<string, int> AggregateKeyboardHeatmapCounts(Dictionary<string, int> keyPressCounts)
+    {
+        var aggregated = new Dictionary<string, int>(StringComparer.Ordinal);
+
+        foreach (var kvp in keyPressCounts)
+        {
+            var count = Math.Max(0, kvp.Value);
+            if (count <= 0)
+            {
+                continue;
+            }
+
+            var rawKey = kvp.Key ?? string.Empty;
+            var components = rawKey
+                .Split(new[] { '+' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(part => part.Trim())
+                .Where(part => !string.IsNullOrWhiteSpace(part))
+                .ToList();
+
+            if (components.Count == 0)
+            {
+                components.Add(rawKey.Trim());
+            }
+
+            foreach (var sourceKey in components)
+            {
+                var normalizedKey = NormalizeKeyboardHeatmapKey(sourceKey);
+                if (string.IsNullOrWhiteSpace(normalizedKey))
+                {
+                    continue;
+                }
+
+                aggregated[normalizedKey] = SafeAdd(aggregated.TryGetValue(normalizedKey, out var current) ? current : 0, count);
+            }
+        }
+
+        return aggregated;
+    }
+
+    private static string? NormalizeKeyboardHeatmapKey(string rawKey)
+    {
+        var trimmed = (rawKey ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            return null;
+        }
+
+        var upper = trimmed.ToUpperInvariant();
+        if (upper.Length == 1)
+        {
+            return upper;
+        }
+
+        if (upper.StartsWith("F", StringComparison.Ordinal) && int.TryParse(upper.Substring(1), out _))
+        {
+            return upper;
+        }
+
+        if (upper.StartsWith("NUM", StringComparison.Ordinal))
+        {
+            var suffix = upper.Substring(3);
+            if (suffix.Length == 1 && char.IsDigit(suffix[0]))
+            {
+                return suffix;
+            }
+
+            if (suffix == ".")
+            {
+                return ".";
+            }
+            if (suffix == "+")
+            {
+                return "=";
+            }
+            if (suffix == "-")
+            {
+                return "-";
+            }
+            if (suffix == "/")
+            {
+                return "/";
+            }
+        }
+
+        switch (upper)
+        {
+            case "CMD":
+            case "COMMAND":
+            case "WIN":
+            case "LWIN":
+            case "RWIN":
+                return "Cmd";
+            case "CTRL":
+            case "CONTROL":
+            case "LCTRL":
+            case "RCTRL":
+            case "LCTL":
+            case "RCTL":
+            case "LCONTROL":
+            case "RCONTROL":
+                return "Ctrl";
+            case "OPTION":
+            case "OPT":
+            case "ALT":
+            case "MENU":
+            case "LALT":
+            case "RALT":
+            case "LMENU":
+            case "RMENU":
+                return "Option";
+            case "SHIFT":
+            case "LSHIFT":
+            case "RSHIFT":
+                return "Shift";
+            case "FN":
+            case "FUNCTION":
+                return "Fn";
+            case "SPACE":
+            case "SPACEBAR":
+                return "Space";
+            case "ESC":
+            case "ESCAPE":
+                return "Esc";
+            case "ENTER":
+            case "RETURN":
+                return "Return";
+            case "TAB":
+                return "Tab";
+            case "BACKSPACE":
+                return "Delete";
+            case "DELETE":
+            case "DEL":
+            case "FORWARDDELETE":
+                return "Delete";
+            case "CAPSLOCK":
+                return "CapsLock";
+            case "PAGEUP":
+                return "PageUp";
+            case "PAGEDOWN":
+                return "PageDown";
+            case "HOME":
+                return "Home";
+            case "END":
+                return "End";
+            case "PRINTSCREEN":
+            case "PRTSC":
+            case "PRTSCN":
+            case "SNAPSHOT":
+                return "PrintScreen";
+            case "SCROLLLOCK":
+            case "SCROLL":
+                return "ScrollLock";
+            case "PAUSE":
+            case "BREAK":
+                return "Pause";
+            case "LEFT":
+            case "ARROWLEFT":
+            case "LEFTARROW":
+                return "Left";
+            case "RIGHT":
+            case "ARROWRIGHT":
+            case "RIGHTARROW":
+                return "Right";
+            case "UP":
+            case "ARROWUP":
+            case "UPARROW":
+                return "Up";
+            case "DOWN":
+            case "ARROWDOWN":
+            case "DOWNARROW":
+                return "Down";
+            default:
+                return trimmed;
+        }
+    }
+
+    private static int SafeAdd(int left, int right)
+    {
+        if (right <= 0)
+        {
+            return left;
+        }
+
+        if (left > int.MaxValue - right)
+        {
+            return int.MaxValue;
+        }
+
+        return left + right;
     }
 
     private static void MergeAppStats(DailyStats daily, Dictionary<string, AppStats> totals)

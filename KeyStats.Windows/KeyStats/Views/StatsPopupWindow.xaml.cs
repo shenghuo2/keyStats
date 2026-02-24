@@ -144,6 +144,12 @@ public partial class StatsPopupWindow : Window
         App.CurrentApp?.TrackClick("open_app_stats");
         App.CurrentApp?.ShowAppStatsWindow();
     }
+
+    private void OpenKeyboardHeatmap_Click(object sender, RoutedEventArgs e)
+    {
+        App.CurrentApp?.TrackClick("open_keyboard_heatmap");
+        App.CurrentApp?.ShowKeyboardHeatmapWindow();
+    }
     
     private void SlideOut()
     {

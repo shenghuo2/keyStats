@@ -26,7 +26,7 @@
 
 ### 下载与安装
 
-1. 从 [Releases](https://github.com/your-repo/releases) 下载最新版本的 `KeyStats-Windows-*-NetFramework48.zip`
+1. 从 [Releases](https://github.com/your-repo/releases) 下载最新版本的 `KeyStats-Windows-*.zip`
 2. 解压到任意目录（例如 `C:\Program Files\KeyStats`）
 3. 运行 `KeyStats.exe` 即可开始使用
 
@@ -102,7 +102,7 @@ build.bat
 
 **输出：**
 - 发布文件：`publish/` 目录
-- 打包文件：`dist/KeyStats-Windows-<版本>-NetFramework48.zip`
+- 打包文件：`dist/KeyStats-Windows-<版本>.zip`
 
 #### 为什么选择 .NET Framework 4.8？
 

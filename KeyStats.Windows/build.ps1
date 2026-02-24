@@ -166,7 +166,7 @@ if ($VersionMatch -and $VersionMatch.Matches.Groups[1].Value) {
 }
 
 # Determine zip name
-$ZipName = "KeyStats-Windows-$Version-NetFramework48.zip"
+$ZipName = "KeyStats-Windows-$Version.zip"
 $ZipPath = Join-Path $DistDir $ZipName
 
 # Copy files to temporary directory

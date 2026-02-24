@@ -26,6 +26,7 @@ public partial class App : System.Windows.Application
     private NotificationSettingsWindow? _notificationSettingsWindow;
     private MouseCalibrationWindow? _mouseCalibrationWindow;
     private AppStatsWindow? _appStatsWindow;
+    private KeyboardHeatmapWindow? _keyboardHeatmapWindow;
     private System.Threading.Mutex? _singleInstanceMutex;
     private string? _appVersion;
     private IPostHogAnalytics? _postHogClient;
@@ -250,6 +251,20 @@ public partial class App : System.Windows.Application
         _appStatsWindow.Closed += (_, _) => _appStatsWindow = null;
         _appStatsWindow.Show();
         _appStatsWindow.Activate();
+    }
+
+    public void ShowKeyboardHeatmapWindow()
+    {
+        if (_keyboardHeatmapWindow != null && _keyboardHeatmapWindow.IsVisible)
+        {
+            _keyboardHeatmapWindow.Activate();
+            return;
+        }
+
+        _keyboardHeatmapWindow = new KeyboardHeatmapWindow();
+        _keyboardHeatmapWindow.Closed += (_, _) => _keyboardHeatmapWindow = null;
+        _keyboardHeatmapWindow.Show();
+        _keyboardHeatmapWindow.Activate();
     }
 
     public void ExportData()
