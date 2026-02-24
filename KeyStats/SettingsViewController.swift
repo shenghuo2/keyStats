@@ -31,6 +31,7 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
     private var appIconView: NSImageView!
     private var headerTitleLabel: NSTextField!
     private var headerSubtitleLabel: NSTextField!
+    private var githubButton: NSButton!
 
     private var showKeyPressesButton: NSSwitch!
     private var showMouseClicksButton: NSSwitch!
@@ -72,6 +73,8 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
     private let thresholdMaximum = 1_000_000
     private let thresholdStep = 100.0
     private let dynamicIconColorStyleKey = "dynamicIconColorStyle"
+    private let githubRepositoryURL = URL(string: "https://github.com/debugtheworldbot/keyStats")
+    private static var cachedGitHubIconImage: NSImage?
 
     private lazy var thresholdFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
@@ -212,13 +215,38 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
         versionLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
         versionLabel.textColor = .tertiaryLabelColor
 
+        githubButton = makeSymbolButton(
+            systemName: "chevron.left.forwardslash.chevron.right",
+            fallbackTitle: NSLocalizedString("settings.github", comment: ""),
+            pointSize: 14,
+            weight: .semibold,
+            action: #selector(openGitHubRepository)
+        )
+        githubButton.toolTip = NSLocalizedString("settings.github.tooltip", comment: "")
+        githubButton.setAccessibilityLabel(NSLocalizedString("settings.github", comment: ""))
+        githubButton.imageScaling = .scaleProportionallyDown
+        if let hoverButton = githubButton as? HoverIconButton {
+            hoverButton.showsHoverBackground = false
+            hoverButton.padding = 4
+            hoverButton.cornerRadius = 6
+        }
+        NSLayoutConstraint.activate([
+            githubButton.widthAnchor.constraint(equalToConstant: 28),
+            githubButton.heightAnchor.constraint(equalToConstant: 28)
+        ])
+        applyBundledGitHubIconIfNeeded()
+
         let headerTextStack = NSStackView(views: [headerTitleLabel, headerSubtitleLabel, versionLabel])
         headerTextStack.orientation = .vertical
         headerTextStack.alignment = .leading
         headerTextStack.spacing = 2
         headerTextStack.translatesAutoresizingMaskIntoConstraints = false
 
-        let headerStack = NSStackView(views: [appIconView, headerTextStack])
+        let headerSpacer = NSView()
+        headerSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        headerSpacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        let headerStack = NSStackView(views: [appIconView, headerTextStack, headerSpacer, githubButton])
         headerStack.orientation = .horizontal
         headerStack.alignment = .centerY
         headerStack.spacing = 12
@@ -511,6 +539,59 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
         row.spacing = 12
         row.translatesAutoresizingMaskIntoConstraints = false
         return row
+    }
+
+    private func makeSymbolButton(systemName: String,
+                                  fallbackTitle: String,
+                                  pointSize: CGFloat? = nil,
+                                  weight: NSFont.Weight = .regular,
+                                  action: Selector) -> NSButton {
+        var image = NSImage(systemSymbolName: systemName, accessibilityDescription: nil)
+        if let pointSize = pointSize, let baseImage = image {
+            let configuration = NSImage.SymbolConfiguration(pointSize: pointSize, weight: weight)
+            image = baseImage.withSymbolConfiguration(configuration)
+        }
+
+        if let image = image {
+            let button = HoverIconButton(image: image, target: self, action: action)
+            button.isBordered = false
+            button.imagePosition = .imageOnly
+            button.contentTintColor = .labelColor
+            button.translatesAutoresizingMaskIntoConstraints = false
+            return button
+        }
+
+        let button = NSButton(title: fallbackTitle, target: self, action: action)
+        button.bezelStyle = .rounded
+        button.translatesAutoresizingMaskIntoConstraints = false
+        return button
+    }
+
+    private func applyBundledGitHubIconIfNeeded() {
+        if let cachedImage = Self.cachedGitHubIconImage {
+            applyGitHubButtonImage(cachedImage)
+            return
+        }
+        guard let image = makeGitHubSVGIcon() else { return }
+        image.isTemplate = true
+        Self.cachedGitHubIconImage = image
+        applyGitHubButtonImage(image)
+    }
+
+    private func makeGitHubSVGIcon() -> NSImage? {
+        let svg = """
+        <svg aria-hidden="true" focusable="false" class="octicon octicon-mark-github" viewBox="0 0 24 24" width="32" height="32" fill="currentColor" display="inline-block" overflow="visible" style="vertical-align:text-bottom" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 1C5.923 1 1 5.923 1 12c0 4.867 3.149 8.979 7.521 10.436.55.096.756-.233.756-.522 0-.262-.013-1.128-.013-2.049-2.764.509-3.479-.674-3.699-1.292-.124-.317-.66-1.293-1.127-1.554-.385-.207-.936-.715-.014-.729.866-.014 1.485.797 1.691 1.128.99 1.663 2.571 1.196 3.204.907.096-.715.385-1.196.701-1.471-2.448-.275-5.005-1.224-5.005-5.432 0-1.196.426-2.186 1.128-2.956-.111-.275-.496-1.402.11-2.915 0 0 .921-.288 3.024 1.128a10.193 10.193 0 0 1 2.75-.371c.936 0 1.871.123 2.75.371 2.104-1.43 3.025-1.128 3.025-1.128.605 1.513.221 2.64.111 2.915.701.77 1.127 1.747 1.127 2.956 0 4.222-2.571 5.157-5.019 5.432.399.344.743 1.004.743 2.035 0 1.471-.014 2.654-.014 3.025 0 .289.206.632.756.522C19.851 20.979 23 16.854 23 12c0-6.077-4.922-11-11-11Z"></path>
+        </svg>
+        """
+        guard let data = svg.data(using: .utf8) else { return nil }
+        return NSImage(data: data)
+    }
+
+    private func applyGitHubButtonImage(_ image: NSImage) {
+        githubButton.image = image
+        githubButton.imagePosition = .imageOnly
+        githubButton.contentTintColor = .labelColor
     }
 
     private func makeIndentedContainer(_ content: NSView, indent: CGFloat) -> NSView {
@@ -946,6 +1027,11 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
 
     @objc private func calibrateMouseDistance() {
         MouseDistanceCalibrationWindowController.shared.show()
+    }
+
+    @objc private func openGitHubRepository() {
+        guard let url = githubRepositoryURL else { return }
+        NSWorkspace.shared.open(url)
     }
 
     @objc private func resetStats() {

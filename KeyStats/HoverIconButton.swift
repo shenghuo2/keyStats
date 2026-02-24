@@ -4,6 +4,9 @@ final class HoverIconButton: NSButton {
     var padding: CGFloat = 8 {
         didSet { invalidateIntrinsicContentSize() }
     }
+    var showsHoverBackground: Bool = true {
+        didSet { applyHoverBackground() }
+    }
     var hoverBackgroundColor: NSColor = .systemGray {
         didSet { applyHoverBackground() }
     }
@@ -43,6 +46,11 @@ final class HoverIconButton: NSButton {
         self.trackingArea = trackingArea
     }
 
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        addCursorRect(bounds, cursor: .pointingHand)
+    }
+
     override func mouseEntered(with event: NSEvent) {
         super.mouseEntered(with: event)
         setHovered(true)
@@ -74,7 +82,7 @@ final class HoverIconButton: NSButton {
     }
 
     private func applyHoverBackground() {
-        layer?.backgroundColor = isHovered
+        layer?.backgroundColor = (isHovered && showsHoverBackground)
             ? resolvedCGColor(hoverBackgroundColor, alpha: hoverBackgroundAlpha)
             : NSColor.clear.cgColor
     }

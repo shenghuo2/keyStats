@@ -37,6 +37,8 @@
 "settings.mouseDistanceCalibration.status.moving" = "已移动 %@";
 "settings.dynamicIconColorHelp.title" = "动态颜色说明";
 "settings.dynamicIconColorHelp.body" = "根据近期输入速率自动计算颜色，并在菜单栏实时展示。\n\nAPM（每分钟输入事件数）颜色范围：\n• < 80：不着色（保持默认）\n• 80–160：从浅绿渐变到绿\n• 160–240：从黄渐变到红\n• ≥ 240：红色";
+"settings.github" = "GitHub";
+"settings.github.tooltip" = "在 GitHub 打开 KeyStats 项目";
 "settings.windowTitle" = "KeyStats设置";
 "button.back" = "返回";
 "menu.window" = "窗口";
