@@ -1280,6 +1280,16 @@ class StatsManager {
 // MARK: - 历史数据
 
 extension StatsManager {
+    struct KeyboardHeatmapDay {
+        let date: Date
+        let totalKeyPresses: Int
+        let keyCounts: [String: Int]
+
+        var maxCount: Int {
+            keyCounts.values.max() ?? 0
+        }
+    }
+
     enum HistoryRange {
         case today
         case yesterday
@@ -1292,6 +1302,139 @@ extension StatsManager {
         case clicks
         case mouseDistance
         case scrollDistance
+    }
+
+    /// 键盘热力图可切换日期边界（按天连续切换）
+    /// 起始日取「首次出现键盘数据」与今天之间的最早日期；若没有任何键盘数据则今天=起始日。
+    func keyboardHeatmapDateBounds() -> (start: Date, end: Date) {
+        assert(Thread.isMainThread)
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+
+        var earliestDate: Date?
+
+        if currentStats.keyPresses > 0 || !currentStats.keyPressCounts.isEmpty {
+            earliestDate = calendar.startOfDay(for: currentStats.date)
+        }
+
+        for daily in history.values {
+            guard daily.keyPresses > 0 || !daily.keyPressCounts.isEmpty else { continue }
+            let date = calendar.startOfDay(for: daily.date)
+            if date > today { continue }
+            if let existing = earliestDate {
+                if date < existing {
+                    earliestDate = date
+                }
+            } else {
+                earliestDate = date
+            }
+        }
+
+        let start = earliestDate ?? today
+        return (start: min(start, today), end: today)
+    }
+
+    /// 按天获取键盘热力图数据。
+    /// 组合键（如 Cmd+A）会拆分并分别累加到各个按键：Cmd +1、A +1。
+    func keyboardHeatmapDay(for date: Date) -> KeyboardHeatmapDay {
+        assert(Thread.isMainThread)
+        let normalizedDate = Calendar.current.startOfDay(for: date)
+        let daily = dailyStats(for: normalizedDate)
+        let aggregated = aggregateKeyboardHeatmapCounts(from: daily.keyPressCounts)
+        return KeyboardHeatmapDay(
+            date: normalizedDate,
+            totalKeyPresses: max(0, daily.keyPresses),
+            keyCounts: aggregated
+        )
+    }
+
+    private func aggregateKeyboardHeatmapCounts(from keyPressCounts: [String: Int]) -> [String: Int] {
+        var aggregated: [String: Int] = [:]
+
+        for (rawKey, rawCount) in keyPressCounts {
+            let count = max(0, rawCount)
+            guard count > 0 else { continue }
+
+            let components = rawKey
+                .split(separator: "+")
+                .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+                .filter { !$0.isEmpty }
+
+            let sourceKeys = components.isEmpty ? [rawKey] : components
+            for sourceKey in sourceKeys {
+                guard let normalizedKey = normalizedKeyboardHeatmapKey(sourceKey) else { continue }
+                aggregated[normalizedKey] = safeAdd(aggregated[normalizedKey] ?? 0, count)
+            }
+        }
+
+        return aggregated
+    }
+
+    private func normalizedKeyboardHeatmapKey(_ rawKey: String) -> String? {
+        let trimmed = rawKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        let upper = trimmed.uppercased()
+        if upper.count == 1 {
+            return upper
+        }
+
+        if upper.hasPrefix("F"), Int(upper.dropFirst()) != nil {
+            return upper
+        }
+
+        switch upper {
+        case "CMD", "COMMAND", "⌘":
+            return "Cmd"
+        case "CTRL", "CONTROL", "⌃":
+            return "Ctrl"
+        case "OPTION", "OPT", "ALT", "⌥":
+            return "Option"
+        case "SHIFT", "⇧":
+            return "Shift"
+        case "FN", "FUNCTION", "🌐":
+            return "Fn"
+        case "SPACE", "SPACEBAR":
+            return "Space"
+        case "ESCAPE", "ESC", "⎋":
+            return "Esc"
+        case "RETURN", "↩":
+            return "Return"
+        case "ENTER", "⌅":
+            return "Enter"
+        case "BACKSPACE":
+            return "Delete"
+        case "DELETE", "⌫":
+            return "Delete"
+        case "FORWARDDELETE", "DEL", "⌦":
+            return "ForwardDelete"
+        case "INSERT", "INS", "HELP":
+            return "Insert"
+        case "PAGEUP":
+            return "PageUp"
+        case "PAGEDOWN":
+            return "PageDown"
+        case "HOME":
+            return "Home"
+        case "END":
+            return "End"
+        case "PRINTSCREEN", "PRTSC", "PRTSCN", "SNAPSHOT":
+            return "PrintScreen"
+        case "SCROLLLOCK", "SCROLL":
+            return "ScrollLock"
+        case "PAUSE", "BREAK":
+            return "Pause"
+        case "LEFT", "ARROWLEFT", "LEFTARROW":
+            return "Left"
+        case "RIGHT", "ARROWRIGHT", "RIGHTARROW":
+            return "Right"
+        case "UP", "ARROWUP", "UPARROW":
+            return "Up"
+        case "DOWN", "ARROWDOWN", "DOWNARROW":
+            return "Down"
+        default:
+            return trimmed
+        }
     }
     
     func historySeries(range: HistoryRange, metric: HistoryMetric) -> [(date: Date, value: Double)] {

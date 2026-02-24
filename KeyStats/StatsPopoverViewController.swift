@@ -46,6 +46,7 @@ class StatsPopoverViewController: NSViewController {
     private var settingsButton: NSButton!
     private var appStatsButton: NSButton!
     private var allTimeStatsButton: NSButton!
+    private var keyboardHeatmapButton: NSButton!
     private var pendingStatsRefresh = false
     private var statsUpdateToken: UUID?
     private var updateAvailabilityToken: UUID?
@@ -404,6 +405,25 @@ class StatsPopoverViewController: NSViewController {
             allTimeStatsButton.heightAnchor.constraint(equalToConstant: 28)
         ])
 
+        keyboardHeatmapButton = makeSymbolButton(systemName: "keyboard",
+                                                 fallbackTitle: NSLocalizedString("keyboardHeatmap.button", comment: ""),
+                                                 pointSize: 16,
+                                                 weight: .semibold,
+                                                 action: #selector(showKeyboardHeatmap))
+        keyboardHeatmapButton.toolTip = NSLocalizedString("keyboardHeatmap.button", comment: "")
+        keyboardHeatmapButton.setAccessibilityLabel(NSLocalizedString("keyboardHeatmap.button", comment: ""))
+        keyboardHeatmapButton.imageScaling = .scaleProportionallyDown
+        keyboardHeatmapButton.setContentHuggingPriority(.required, for: .horizontal)
+        keyboardHeatmapButton.setContentCompressionResistancePriority(.required, for: .horizontal)
+        if let hoverButton = keyboardHeatmapButton as? HoverIconButton {
+            hoverButton.padding = 4
+            hoverButton.cornerRadius = 6
+        }
+        NSLayoutConstraint.activate([
+            keyboardHeatmapButton.widthAnchor.constraint(equalToConstant: 28),
+            keyboardHeatmapButton.heightAnchor.constraint(equalToConstant: 28)
+        ])
+
         let footerStack = NSStackView()
         footerStack.orientation = .horizontal
         footerStack.alignment = .bottom
@@ -420,8 +440,10 @@ class StatsPopoverViewController: NSViewController {
         footerStack.addArrangedSubview(settingsButton)
         footerStack.addArrangedSubview(appStatsButton)
         footerStack.addArrangedSubview(allTimeStatsButton)
+        footerStack.addArrangedSubview(keyboardHeatmapButton)
         footerStack.setCustomSpacing(6, after: settingsButton)
         footerStack.setCustomSpacing(6, after: appStatsButton)
+        footerStack.setCustomSpacing(6, after: allTimeStatsButton)
         footerStack.addArrangedSubview(footerSpacer)
         footerStack.addArrangedSubview(buttonStack)
 
@@ -774,6 +796,11 @@ class StatsPopoverViewController: NSViewController {
         view.window?.performClose(nil)
     }
 
+    @objc private func showKeyboardHeatmap() {
+        KeyboardHeatmapWindowController.shared.show()
+        view.window?.performClose(nil)
+    }
+
     @objc private func requestPermission() {
         _ = InputMonitor.shared.checkAccessibilityPermission()
         openAccessibilitySettings()
@@ -847,6 +874,7 @@ class StatsPopoverViewController: NSViewController {
             settingsButton.fittingSize.height,
             appStatsButton.fittingSize.height,
             allTimeStatsButton.fittingSize.height,
+            keyboardHeatmapButton.fittingSize.height,
             quitButton.fittingSize.height,
             checkUpdatesButton.isHidden ? 0 : checkUpdatesButton.fittingSize.height
         )

@@ -201,6 +201,16 @@
 "appStats.disabled" = "按应用统计已在设置中关闭";
 "appStats.unknownApp" = "未知应用";
 
+"keyboardHeatmap.windowTitle" = "键盘热力图";
+"keyboardHeatmap.title" = "键盘热力图";
+"keyboardHeatmap.subtitle" = "完整虚拟键盘视图，按天展示按键热度。";
+"keyboardHeatmap.button" = "键盘热力图";
+"keyboardHeatmap.prevDay" = "上一天";
+"keyboardHeatmap.nextDay" = "下一天";
+"keyboardHeatmap.backToToday" = "回到今天";
+"keyboardHeatmap.noData" = "当天暂无键盘活动";
+"keyboardHeatmap.summary" = "总计 %@ 次按键 · %@ 个活跃键";
+
 "allTimeStats.heatmap" = "活动热力图";
 "heatmap.less" = "少";
 "heatmap.more" = "多";

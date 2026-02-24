@@ -201,6 +201,16 @@
 "appStats.disabled" = "App stats are disabled in Settings";
 "appStats.unknownApp" = "Unknown App";
 
+"keyboardHeatmap.windowTitle" = "Keyboard Heatmap";
+"keyboardHeatmap.title" = "Keyboard Heatmap";
+"keyboardHeatmap.subtitle" = "A full virtual keyboard view for daily key intensity.";
+"keyboardHeatmap.button" = "Keyboard Heatmap";
+"keyboardHeatmap.prevDay" = "Previous Day";
+"keyboardHeatmap.nextDay" = "Next Day";
+"keyboardHeatmap.backToToday" = "Today";
+"keyboardHeatmap.noData" = "No keyboard activity for this day";
+"keyboardHeatmap.summary" = "Total %@ keys · %@ active keys";
+
 "allTimeStats.heatmap" = "Activity Heatmap";
 "heatmap.less" = "Less";
 "heatmap.more" = "More";
