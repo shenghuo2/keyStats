@@ -124,9 +124,12 @@ class InputMonitor {
 
     private func handleEvent(type: CGEventType, event: CGEvent) {
         // Optimization: Fast path for mouse moves to avoid allocations
-        if type == .mouseMoved || type == .leftMouseDragged || type == .rightMouseDragged {
+        switch type {
+        case .mouseMoved, .leftMouseDragged, .rightMouseDragged:
             handleMouseMove(event: event)
             return
+        default:
+            break
         }
 
         let statsManager = StatsManager.shared
