@@ -176,8 +176,16 @@ final class KeyboardHeatmapViewController: NSViewController {
         containerStack.addArrangedSubview(headerStack)
         headerStack.widthAnchor.constraint(equalTo: containerStack.widthAnchor).isActive = true
 
-        previousDayButton = makeControlButton(title: NSLocalizedString("keyboardHeatmap.prevDay", comment: ""), action: #selector(showPreviousDay))
-        nextDayButton = makeControlButton(title: NSLocalizedString("keyboardHeatmap.nextDay", comment: ""), action: #selector(showNextDay))
+        previousDayButton = makeIconControlButton(
+            systemName: "chevron.left",
+            accessibilityLabel: NSLocalizedString("keyboardHeatmap.prevDay", comment: ""),
+            action: #selector(showPreviousDay)
+        )
+        nextDayButton = makeIconControlButton(
+            systemName: "chevron.right",
+            accessibilityLabel: NSLocalizedString("keyboardHeatmap.nextDay", comment: ""),
+            action: #selector(showNextDay)
+        )
         backToTodayButton = makeControlButton(title: NSLocalizedString("keyboardHeatmap.backToToday", comment: ""), action: #selector(backToToday))
         backToTodayButton.isHidden = true
 
@@ -195,19 +203,18 @@ final class KeyboardHeatmapViewController: NSViewController {
         navigationStack.spacing = 10
         navigationStack.translatesAutoresizingMaskIntoConstraints = false
 
-        let daySwitchStack = NSStackView(views: [previousDayButton, nextDayButton])
-        daySwitchStack.orientation = .horizontal
-        daySwitchStack.alignment = .centerY
-        daySwitchStack.spacing = 8
-        daySwitchStack.setContentHuggingPriority(.required, for: .horizontal)
-        daySwitchStack.setContentCompressionResistancePriority(.required, for: .horizontal)
+        let dayNavigationStack = NSStackView(views: [previousDayButton, datePickerButton, nextDayButton])
+        dayNavigationStack.orientation = .horizontal
+        dayNavigationStack.alignment = .centerY
+        dayNavigationStack.spacing = 8
+        dayNavigationStack.setContentHuggingPriority(.required, for: .horizontal)
+        dayNavigationStack.setContentCompressionResistancePriority(.required, for: .horizontal)
 
         let spacer = NSView()
         spacer.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
 
-        navigationStack.addArrangedSubview(daySwitchStack)
-        navigationStack.addArrangedSubview(datePickerButton)
+        navigationStack.addArrangedSubview(dayNavigationStack)
         navigationStack.addArrangedSubview(backToTodayButton)
         navigationStack.addArrangedSubview(spacer)
         navigationStack.addArrangedSubview(summaryLabel)
@@ -261,6 +268,7 @@ final class KeyboardHeatmapViewController: NSViewController {
 
     private func makeControlButton(title: String, action: Selector) -> NSButton {
         let button = NSButton(title: title, target: self, action: action)
+        button.translatesAutoresizingMaskIntoConstraints = false
         button.bezelStyle = .rounded
         button.controlSize = .regular
         button.setContentCompressionResistancePriority(.required, for: .horizontal)
@@ -268,22 +276,47 @@ final class KeyboardHeatmapViewController: NSViewController {
         return button
     }
 
+    private func makeIconControlButton(systemName: String, accessibilityLabel: String, action: Selector) -> NSButton {
+        let button = NSButton(title: "", target: self, action: action)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.bezelStyle = .rounded
+        button.controlSize = .regular
+        button.image = NSImage(
+            systemSymbolName: systemName,
+            accessibilityDescription: accessibilityLabel
+        )?.withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 13, weight: .semibold))
+        button.imagePosition = .imageOnly
+        button.contentTintColor = .labelColor
+        button.toolTip = accessibilityLabel
+        button.setAccessibilityLabel(accessibilityLabel)
+        button.setButtonType(.momentaryPushIn)
+        button.setContentCompressionResistancePriority(.required, for: .horizontal)
+        button.setContentHuggingPriority(.required, for: .horizontal)
+        button.widthAnchor.constraint(equalToConstant: 32).isActive = true
+        return button
+    }
+
     private func makeDatePickerButton() -> NSButton {
         let button = NSButton(title: "", target: self, action: #selector(toggleDatePickerPopover))
+        button.translatesAutoresizingMaskIntoConstraints = false
         button.bezelStyle = .rounded
-        button.controlSize = .small
-        button.font = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .semibold)
-        button.image = NSImage(
-            systemSymbolName: "chevron.down",
-            accessibilityDescription: nil
-        )?.withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 9, weight: .semibold))
-        button.imagePosition = .imageRight
-        button.imageHugsTitle = true
+        button.controlSize = .regular
+        button.font = NSFont.monospacedDigitSystemFont(ofSize: 14, weight: .semibold)
         button.contentTintColor = .labelColor
         button.setContentCompressionResistancePriority(.required, for: .horizontal)
         button.setContentHuggingPriority(.required, for: .horizontal)
         button.widthAnchor.constraint(greaterThanOrEqualToConstant: 78).isActive = true
         return button
+    }
+
+    private func updateDatePickerButtonTitle(_ title: String) {
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 14, weight: .semibold),
+            .foregroundColor: NSColor.labelColor
+        ]
+        let attributedTitle = NSAttributedString(string: title, attributes: attributes)
+        datePickerButton.attributedTitle = attributedTitle
+        datePickerButton.attributedAlternateTitle = attributedTitle
     }
 
     private func makeDatePickerPopover() -> NSPopover {
@@ -311,7 +344,7 @@ final class KeyboardHeatmapViewController: NSViewController {
         summaryLabel.stringValue = String(format: NSLocalizedString("keyboardHeatmap.summary", comment: ""), totalFormatted, activeFormatted)
 
         let hasActivity = dayData.totalKeyPresses > 0
-        datePickerButton.title = displayDateString(for: selectedDate)
+        updateDatePickerButtonTitle(displayDateString(for: selectedDate))
         emptyStateBadgeView.isHidden = hasActivity
         keyboardEmptyOverlayView.isHidden = hasActivity
         keyboardHeatmapView.alphaValue = 1
@@ -629,12 +662,14 @@ private final class EmptyStateBadgeView: NSVisualEffectView {
 
 private final class HeatmapDatePickerPopoverViewController: NSViewController {
     private static let contentInset = NSEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
-    static let contentSize = NSSize(width: 248, height: 224)
+    static let contentSize = NSSize(width: 220, height: 200)
 
     var onDateSelected: ((Date) -> Void)?
+    private var didConfigureConstraints = false
 
     private lazy var datePicker: NSDatePicker = {
         let picker = NSDatePicker()
+        picker.translatesAutoresizingMaskIntoConstraints = false
         picker.datePickerStyle = .clockAndCalendar
         picker.datePickerElements = .yearMonthDay
         picker.datePickerMode = .single
@@ -649,11 +684,12 @@ private final class HeatmapDatePickerPopoverViewController: NSViewController {
     }()
 
     override func loadView() {
-        view = NSView(frame: NSRect(origin: .zero, size: Self.contentSize))
+        view = NSView(frame: .zero)
         view.wantsLayer = true
         view.layer?.backgroundColor = NSColor.clear.cgColor
 
         view.addSubview(datePicker)
+        configureConstraintsIfNeeded()
     }
 
     func update(selectedDate: Date, bounds: (start: Date, end: Date)) {
@@ -664,19 +700,27 @@ private final class HeatmapDatePickerPopoverViewController: NSViewController {
 
     func prepareForPresentation() {
         _ = view
-        datePicker.sizeToFit()
-        let fittingSize = datePicker.fittingSize
-        let origin = NSPoint(x: Self.contentInset.left, y: Self.contentInset.bottom)
-        datePicker.frame = NSRect(origin: origin, size: fittingSize)
-        preferredContentSize = NSSize(
-            width: fittingSize.width + Self.contentInset.left + Self.contentInset.right,
-            height: fittingSize.height + Self.contentInset.top + Self.contentInset.bottom
-        )
-        view.frame = NSRect(origin: .zero, size: preferredContentSize)
+        configureConstraintsIfNeeded()
+        view.layoutSubtreeIfNeeded()
+        preferredContentSize = view.fittingSize
     }
 
     @objc private func datePicked(_ sender: NSDatePicker) {
         onDateSelected?(Calendar.current.startOfDay(for: sender.dateValue))
+    }
+
+    private func configureConstraintsIfNeeded() {
+        guard !didConfigureConstraints else { return }
+        didConfigureConstraints = true
+
+        NSLayoutConstraint.activate([
+            datePicker.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            datePicker.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            datePicker.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: Self.contentInset.left),
+            view.trailingAnchor.constraint(greaterThanOrEqualTo: datePicker.trailingAnchor, constant: Self.contentInset.right),
+            datePicker.topAnchor.constraint(greaterThanOrEqualTo: view.topAnchor, constant: Self.contentInset.top),
+            view.bottomAnchor.constraint(greaterThanOrEqualTo: datePicker.bottomAnchor, constant: Self.contentInset.bottom)
+        ])
     }
 }
 
