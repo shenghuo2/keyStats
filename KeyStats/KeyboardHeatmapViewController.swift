@@ -54,7 +54,7 @@ final class KeyboardHeatmapViewController: NSViewController {
     private var previousDayButton: NSButton!
     private var nextDayButton: NSButton!
     private var backToTodayButton: NSButton!
-    private var dateLabel: NSTextField!
+    private var datePickerButton: NSButton!
     private var summaryLabel: NSTextField!
     private var heatmapContainer: NSView!
     private var keyboardHeatmapView: KeyboardHeatmapView!
@@ -71,6 +71,14 @@ final class KeyboardHeatmapViewController: NSViewController {
     private var pendingRefresh = false
     private var isDayTransitionAnimating = false
     private var appearanceObservation: NSKeyValueObservation?
+    private lazy var datePickerPopover: NSPopover = makeDatePickerPopover()
+    private lazy var datePickerViewController: HeatmapDatePickerPopoverViewController = {
+        let viewController = HeatmapDatePickerPopoverViewController()
+        viewController.onDateSelected = { [weak self] date in
+            self?.handleDateSelection(date)
+        }
+        return viewController
+    }()
 
     private lazy var dateFormatterWithoutYear: DateFormatter = {
         let formatter = DateFormatter()
@@ -173,12 +181,7 @@ final class KeyboardHeatmapViewController: NSViewController {
         backToTodayButton = makeControlButton(title: NSLocalizedString("keyboardHeatmap.backToToday", comment: ""), action: #selector(backToToday))
         backToTodayButton.isHidden = true
 
-        dateLabel = NSTextField(labelWithString: "")
-        dateLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .semibold)
-        dateLabel.textColor = .labelColor
-        dateLabel.alignment = .center
-        dateLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
-        dateLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 52).isActive = true
+        datePickerButton = makeDatePickerButton()
 
         summaryLabel = NSTextField(labelWithString: "")
         summaryLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
@@ -204,7 +207,7 @@ final class KeyboardHeatmapViewController: NSViewController {
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
 
         navigationStack.addArrangedSubview(daySwitchStack)
-        navigationStack.addArrangedSubview(dateLabel)
+        navigationStack.addArrangedSubview(datePickerButton)
         navigationStack.addArrangedSubview(backToTodayButton)
         navigationStack.addArrangedSubview(spacer)
         navigationStack.addArrangedSubview(summaryLabel)
@@ -265,6 +268,33 @@ final class KeyboardHeatmapViewController: NSViewController {
         return button
     }
 
+    private func makeDatePickerButton() -> NSButton {
+        let button = NSButton(title: "", target: self, action: #selector(toggleDatePickerPopover))
+        button.bezelStyle = .rounded
+        button.controlSize = .small
+        button.font = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .semibold)
+        button.image = NSImage(
+            systemSymbolName: "chevron.down",
+            accessibilityDescription: nil
+        )?.withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 9, weight: .semibold))
+        button.imagePosition = .imageRight
+        button.imageHugsTitle = true
+        button.contentTintColor = .labelColor
+        button.setContentCompressionResistancePriority(.required, for: .horizontal)
+        button.setContentHuggingPriority(.required, for: .horizontal)
+        button.widthAnchor.constraint(greaterThanOrEqualToConstant: 78).isActive = true
+        return button
+    }
+
+    private func makeDatePickerPopover() -> NSPopover {
+        let popover = NSPopover()
+        popover.behavior = .transient
+        popover.animates = true
+        popover.contentSize = HeatmapDatePickerPopoverViewController.contentSize
+        popover.contentViewController = datePickerViewController
+        return popover
+    }
+
     func refreshData() {
         let statsManager = StatsManager.shared
         dateBounds = statsManager.keyboardHeatmapDateBounds()
@@ -281,11 +311,12 @@ final class KeyboardHeatmapViewController: NSViewController {
         summaryLabel.stringValue = String(format: NSLocalizedString("keyboardHeatmap.summary", comment: ""), totalFormatted, activeFormatted)
 
         let hasActivity = dayData.totalKeyPresses > 0
-        dateLabel.stringValue = displayDateString(for: selectedDate)
+        datePickerButton.title = displayDateString(for: selectedDate)
         emptyStateBadgeView.isHidden = hasActivity
         keyboardEmptyOverlayView.isHidden = hasActivity
         keyboardHeatmapView.alphaValue = 1
         updateDateNavigationState()
+        syncDatePickerState()
     }
 
     private func displayDateString(for date: Date) -> String {
@@ -326,6 +357,18 @@ final class KeyboardHeatmapViewController: NSViewController {
 
     @objc private func backToToday() {
         transitionToDate(Calendar.current.startOfDay(for: Date()))
+    }
+
+    @objc private func toggleDatePickerPopover() {
+        if datePickerPopover.isShown {
+            datePickerPopover.performClose(nil)
+            return
+        }
+
+        syncDatePickerState()
+        datePickerViewController.prepareForPresentation()
+        datePickerPopover.contentSize = datePickerViewController.preferredContentSize
+        datePickerPopover.show(relativeTo: datePickerButton.bounds, of: datePickerButton, preferredEdge: .maxY)
     }
 
     private func clampedDate(_ date: Date) -> Date {
@@ -379,6 +422,17 @@ final class KeyboardHeatmapViewController: NSViewController {
         selectedDate = targetDate
         refreshData()
         animateDayTransition(direction: direction, previousSnapshot: previousSnapshot)
+    }
+
+    private func syncDatePickerState() {
+        datePickerViewController.update(selectedDate: selectedDate, bounds: dateBounds)
+    }
+
+    private func handleDateSelection(_ date: Date) {
+        let targetDate = clampedDate(date)
+        datePickerPopover.performClose(nil)
+        guard targetDate != selectedDate else { return }
+        transitionToDate(targetDate)
     }
 
     private func makeHeatmapSnapshot() -> NSImageView? {
@@ -570,6 +624,59 @@ private final class EmptyStateBadgeView: NSVisualEffectView {
         layer?.shadowOpacity = 0
         iconView.contentTintColor = textColor
         messageLabel.textColor = textColor
+    }
+}
+
+private final class HeatmapDatePickerPopoverViewController: NSViewController {
+    private static let contentInset = NSEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
+    static let contentSize = NSSize(width: 248, height: 224)
+
+    var onDateSelected: ((Date) -> Void)?
+
+    private lazy var datePicker: NSDatePicker = {
+        let picker = NSDatePicker()
+        picker.datePickerStyle = .clockAndCalendar
+        picker.datePickerElements = .yearMonthDay
+        picker.datePickerMode = .single
+        picker.focusRingType = .none
+        picker.drawsBackground = false
+        picker.backgroundColor = .clear
+        picker.isBordered = false
+        picker.isBezeled = false
+        picker.target = self
+        picker.action = #selector(datePicked(_:))
+        return picker
+    }()
+
+    override func loadView() {
+        view = NSView(frame: NSRect(origin: .zero, size: Self.contentSize))
+        view.wantsLayer = true
+        view.layer?.backgroundColor = NSColor.clear.cgColor
+
+        view.addSubview(datePicker)
+    }
+
+    func update(selectedDate: Date, bounds: (start: Date, end: Date)) {
+        datePicker.minDate = bounds.start
+        datePicker.maxDate = bounds.end
+        datePicker.dateValue = selectedDate
+    }
+
+    func prepareForPresentation() {
+        _ = view
+        datePicker.sizeToFit()
+        let fittingSize = datePicker.fittingSize
+        let origin = NSPoint(x: Self.contentInset.left, y: Self.contentInset.bottom)
+        datePicker.frame = NSRect(origin: origin, size: fittingSize)
+        preferredContentSize = NSSize(
+            width: fittingSize.width + Self.contentInset.left + Self.contentInset.right,
+            height: fittingSize.height + Self.contentInset.top + Self.contentInset.bottom
+        )
+        view.frame = NSRect(origin: .zero, size: preferredContentSize)
+    }
+
+    @objc private func datePicked(_ sender: NSDatePicker) {
+        onDateSelected?(Calendar.current.startOfDay(for: sender.dateValue))
     }
 }
 
