@@ -41,13 +41,13 @@ let package = Package(
                 "SettingsWindowController.swift",
                 "MainWindowViewController.swift"
             ],
-            sources: ["AppStats.swift"]
+            sources: ["AppStats.swift", "StatsModels.swift"]
         ),
         .testTarget(
             name: "KeyStatsCoreTests",
             dependencies: ["KeyStatsCore"],
             path: "KeyStatsTests",
-            sources: ["AppStatsTests.swift"]
+            sources: ["AppStatsTests.swift", "StatsModelsTests.swift"]
         )
     ]
 )
