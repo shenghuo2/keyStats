@@ -153,6 +153,14 @@ public partial class App : System.Windows.Application
     {
         var menu = new System.Windows.Controls.ContextMenu();
 
+        var openMainWindowItem = new System.Windows.Controls.MenuItem { Header = "打开主界面" };
+        openMainWindowItem.Click += (s, e) =>
+        {
+            TrackClick("context_menu_open_main_window");
+            _trayIconViewModel?.ShowMainWindow();
+        };
+        menu.Items.Add(openMainWindowItem);
+
         var settingsItem = new System.Windows.Controls.MenuItem { Header = "设置" };
         settingsItem.Click += (s, e) =>
         {
@@ -252,6 +260,12 @@ public partial class App : System.Windows.Application
     {
         _trayIconViewModel?.ShowStatsCommand.Execute(null);
     }
+
+    public void ShowMainWindow()
+    {
+        _trayIconViewModel?.ShowMainWindow();
+    }
+
     public void ShowAppStatsWindow()
     {
         if (_appStatsWindow != null && _appStatsWindow.IsVisible)

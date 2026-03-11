@@ -19,7 +19,8 @@ public class TrayIconViewModel : ViewModelBase
 {
     private DrawingIcon? _trayIcon;
     private string _tooltipText = "KeyStats";
-    private StatsPopupWindow? _popupWindow;
+    private StatsPopupWindow? _trayPopupWindow;
+    private StatsPopupWindow? _mainWindow;
 
     public DrawingIcon? TrayIcon
     {
@@ -133,16 +134,16 @@ public class TrayIconViewModel : ViewModelBase
         Console.WriteLine("=== TogglePopup called ===");
         try
         {
-            if (_popupWindow != null && _popupWindow.IsVisible)
+            if (_trayPopupWindow != null && _trayPopupWindow.IsVisible)
             {
                 Console.WriteLine("Closing existing window");
-                _popupWindow.Close();
-                _popupWindow = null;
+                _trayPopupWindow.CloseWindow(force: true);
+                _trayPopupWindow = null;
             }
             else
             {
                 Console.WriteLine("Calling ShowStats...");
-                ShowStats();
+                ShowPopup();
             }
         }
         catch (Exception ex)
@@ -158,25 +159,76 @@ public class TrayIconViewModel : ViewModelBase
 
     public void ShowStats(System.Drawing.Point? anchorPoint)
     {
+        ShowPopup(anchorPoint);
+    }
+
+    public void ShowPopup(System.Drawing.Point? anchorPoint = null)
+    {
         try
         {
-            Console.WriteLine("ShowStats called...");
-            if (_popupWindow != null)
+            Console.WriteLine("ShowPopup called...");
+            if (_trayPopupWindow != null)
             {
-                _popupWindow.Activate();
+                if (!_trayPopupWindow.IsVisible)
+                {
+                    _trayPopupWindow.ShowWindow(anchorPoint);
+                    return;
+                }
+
+                if (_trayPopupWindow.WindowState == WindowState.Minimized)
+                {
+                    _trayPopupWindow.WindowState = WindowState.Normal;
+                }
+
+                _trayPopupWindow.Activate();
                 return;
             }
 
-            Console.WriteLine("Creating StatsPopupWindow...");
-            _popupWindow = new StatsPopupWindow(anchorPoint);
-            _popupWindow.Closed += (_, _) => _popupWindow = null;
+            Console.WriteLine("Creating tray popup window...");
+            _trayPopupWindow = new StatsPopupWindow(StatsPopupWindow.DisplayMode.TrayPopup, anchorPoint);
+            _trayPopupWindow.Closed += (_, _) => _trayPopupWindow = null;
             Console.WriteLine("Showing window...");
-            _popupWindow.Show();
+            _trayPopupWindow.ShowWindow(anchorPoint);
             Console.WriteLine("Window shown.");
         }
         catch (Exception ex)
         {
-            Console.WriteLine("=== ERROR IN SHOWSTATS ===");
+            Console.WriteLine("=== ERROR IN SHOWPOPUP ===");
+            Console.WriteLine(ex.ToString());
+            Console.WriteLine("=== END ERROR ===");
+        }
+    }
+
+    public void ShowMainWindow()
+    {
+        try
+        {
+            Console.WriteLine("ShowMainWindow called...");
+            if (_mainWindow != null)
+            {
+                if (!_mainWindow.IsVisible)
+                {
+                    _mainWindow.ShowWindow();
+                    return;
+                }
+
+                if (_mainWindow.WindowState == WindowState.Minimized)
+                {
+                    _mainWindow.WindowState = WindowState.Normal;
+                }
+
+                _mainWindow.Activate();
+                return;
+            }
+
+            Console.WriteLine("Creating main window...");
+            _mainWindow = new StatsPopupWindow(StatsPopupWindow.DisplayMode.Windowed);
+            _mainWindow.Closed += (_, _) => _mainWindow = null;
+            _mainWindow.ShowWindow();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("=== ERROR IN SHOWMAINWINDOW ===");
             Console.WriteLine(ex.ToString());
             Console.WriteLine("=== END ERROR ===");
         }
@@ -184,13 +236,22 @@ public class TrayIconViewModel : ViewModelBase
 
     private void Quit()
     {
+        PrepareForExit();
         StatsManager.Instance.FlushPendingSave();
         InputMonitorService.Instance.StopMonitoring();
         Application.Current.Shutdown();
     }
 
+    public void PrepareForExit()
+    {
+        _trayPopupWindow?.PrepareForExit();
+        _mainWindow?.PrepareForExit();
+    }
+
     public void Cleanup()
     {
+        _trayPopupWindow = null;
+        _mainWindow = null;
         _trayIcon?.Dispose();
         _trayIcon = null;
     }

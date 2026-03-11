@@ -45,4 +45,16 @@ public class AppSettings
 
     [JsonPropertyName("keyHistorySelectedRangeIndex")]
     public int KeyHistorySelectedRangeIndex { get; set; } = 1;
+
+    [JsonPropertyName("mainWindowLeft")]
+    public double? MainWindowLeft { get; set; }
+
+    [JsonPropertyName("mainWindowTop")]
+    public double? MainWindowTop { get; set; }
+
+    [JsonPropertyName("mainWindowWidth")]
+    public double? MainWindowWidth { get; set; }
+
+    [JsonPropertyName("mainWindowHeight")]
+    public double? MainWindowHeight { get; set; }
 }

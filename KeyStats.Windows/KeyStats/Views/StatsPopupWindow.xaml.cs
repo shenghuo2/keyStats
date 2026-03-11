@@ -1,87 +1,121 @@
 using System;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Media.Animation;
 using System.Windows.Forms;
+using System.Windows.Threading;
+using KeyStats.Services;
 using KeyStats.ViewModels;
 
 namespace KeyStats.Views;
 
 public partial class StatsPopupWindow : Window
 {
-    private readonly StatsPopupViewModel _viewModel;
-    private bool _isFullyLoaded;
-    private readonly System.Drawing.Point? _anchorPoint;
+    public enum DisplayMode
+    {
+        TrayPopup,
+        Windowed
+    }
 
-    public StatsPopupWindow(System.Drawing.Point? anchorPoint = null)
+    private const double DefaultWindowModeWidth = 520;
+    private const double DefaultWindowModeHeight = 760;
+    private readonly StatsPopupViewModel _viewModel;
+    private readonly bool _isWindowMode;
+    private bool _isFullyLoaded;
+    private bool _allowClose;
+    private bool _suppressStatePersistence;
+    private System.Drawing.Point? _anchorPoint;
+    private readonly DispatcherTimer _windowStateSaveTimer;
+
+    public StatsPopupWindow(DisplayMode displayMode, System.Drawing.Point? anchorPoint = null)
     {
         Console.WriteLine("StatsPopupWindow constructor...");
         InitializeComponent();
         Console.WriteLine("InitializeComponent done");
 
         _viewModel = (StatsPopupViewModel)DataContext;
+        _isWindowMode = displayMode == DisplayMode.Windowed;
         _anchorPoint = anchorPoint;
+        _windowStateSaveTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(400)
+        };
+        _windowStateSaveTimer.Tick += WindowStateSaveTimer_Tick;
 
+        ConfigureWindowForMode();
         Loaded += OnLoaded;
         Closed += OnClosed;
+        Closing += OnClosing;
+        LocationChanged += OnWindowBoundsChanged;
+        SizeChanged += OnWindowBoundsChanged;
         Console.WriteLine("StatsPopupWindow constructor done");
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         Console.WriteLine("Window loaded, positioning...");
-        PositionNearTray();
+        if (_isWindowMode)
+        {
+            RestoreWindowModeBounds();
+            Opacity = 1;
+        }
+        else
+        {
+            PositionNearTray();
+        }
         
         // 追踪页面浏览
         App.CurrentApp?.TrackPageView("stats_popup");
         
-        // 确定动画方向（从任务栏方向滑入）
-        var mousePos = System.Windows.Forms.Control.MousePosition;
-        var screen = Screen.FromPoint(new System.Drawing.Point(mousePos.X, mousePos.Y)) ?? Screen.PrimaryScreen;
-        if (screen != null)
+        if (!_isWindowMode)
         {
-            var workingArea = screen.WorkingArea;
-            var screenBounds = screen.Bounds;
-            bool taskbarAtBottom = workingArea.Bottom < screenBounds.Bottom;
-            bool taskbarAtTop = workingArea.Top > screenBounds.Top;
-            bool taskbarAtRight = workingArea.Right < screenBounds.Right;
-            bool taskbarAtLeft = workingArea.Left > screenBounds.Left;
-            
-            double slideDistance = 30; // 滑入距离（像素）
-            double translateY = 0;
-            double translateX = 0;
-            
-            if (taskbarAtBottom)
+            // 确定动画方向（从任务栏方向滑入）
+            var mousePos = System.Windows.Forms.Control.MousePosition;
+            var screen = Screen.FromPoint(new System.Drawing.Point(mousePos.X, mousePos.Y)) ?? Screen.PrimaryScreen;
+            if (screen != null)
             {
-                translateY = slideDistance; // 从下方滑入
+                var workingArea = screen.WorkingArea;
+                var screenBounds = screen.Bounds;
+                bool taskbarAtBottom = workingArea.Bottom < screenBounds.Bottom;
+                bool taskbarAtTop = workingArea.Top > screenBounds.Top;
+                bool taskbarAtRight = workingArea.Right < screenBounds.Right;
+                bool taskbarAtLeft = workingArea.Left > screenBounds.Left;
+
+                double slideDistance = 30;
+                double translateY = 0;
+                double translateX = 0;
+
+                if (taskbarAtBottom)
+                {
+                    translateY = slideDistance;
+                }
+                else if (taskbarAtTop)
+                {
+                    translateY = -slideDistance;
+                }
+                else if (taskbarAtRight)
+                {
+                    translateX = slideDistance;
+                }
+                else if (taskbarAtLeft)
+                {
+                    translateX = -slideDistance;
+                }
+                else
+                {
+                    translateY = slideDistance;
+                }
+
+                var transform = (System.Windows.Media.TranslateTransform)FindName("WindowTransform");
+                if (transform != null)
+                {
+                    transform.X = translateX;
+                    transform.Y = translateY;
+                }
+
+                SlideIn(translateX, translateY);
             }
-            else if (taskbarAtTop)
-            {
-                translateY = -slideDistance; // 从上方滑入
-            }
-            else if (taskbarAtRight)
-            {
-                translateX = slideDistance; // 从右侧滑入
-            }
-            else if (taskbarAtLeft)
-            {
-                translateX = -slideDistance; // 从左侧滑入
-            }
-            else
-            {
-                translateY = slideDistance; // 默认从下方滑入
-            }
-            
-            // 设置初始位置（偏移）
-            var transform = (System.Windows.Media.TranslateTransform)FindName("WindowTransform");
-            if (transform != null)
-            {
-                transform.X = translateX;
-                transform.Y = translateY;
-            }
-            
-            // 执行滑入动画
-            SlideIn(translateX, translateY);
         }
         
         _isFullyLoaded = true;
@@ -127,11 +161,17 @@ public partial class StatsPopupWindow : Window
 
     private void OnClosed(object? sender, EventArgs e)
     {
+        _windowStateSaveTimer.Stop();
         _viewModel.Cleanup();
     }
 
     private void Window_Deactivated(object sender, EventArgs e)
     {
+        if (_isWindowMode)
+        {
+            return;
+        }
+
         Console.WriteLine($"Window_Deactivated called, _isFullyLoaded={_isFullyLoaded}");
         if (_isFullyLoaded)
         {
@@ -159,6 +199,12 @@ public partial class StatsPopupWindow : Window
     
     private void SlideOut()
     {
+        if (_isWindowMode)
+        {
+            CloseWindow(force: true);
+            return;
+        }
+
         var transform = (System.Windows.Media.TranslateTransform)FindName("WindowTransform");
         if (transform == null)
         {
@@ -343,7 +389,7 @@ public partial class StatsPopupWindow : Window
             left = workingArea.Right - windowWidth - 10;
         if (top < workingArea.Top)
             top = workingArea.Top + 10;
-        
+
         // 确保窗口底部不会延伸到任务栏区域，保持小间距
         if (top + windowHeight > workingArea.Bottom - spacing)
             top = workingArea.Bottom - windowHeight - spacing;
@@ -351,5 +397,201 @@ public partial class StatsPopupWindow : Window
         // 转换为 WPF 坐标（考虑 DPI）
         Left = left / dpiScaleX;
         Top = top / dpiScaleY;
+    }
+
+    private void ConfigureWindowForMode()
+    {
+        if (_isWindowMode)
+        {
+            WindowStyle = WindowStyle.SingleBorderWindow;
+            AllowsTransparency = false;
+            Background = (System.Windows.Media.Brush)FindResource("SurfaceBrush");
+            ShowInTaskbar = true;
+            Topmost = false;
+            ResizeMode = ResizeMode.CanResize;
+            SizeToContent = SizeToContent.Manual;
+            Width = DefaultWindowModeWidth;
+            Height = DefaultWindowModeHeight;
+            MinWidth = 420;
+            MinHeight = 560;
+            MaxHeight = double.PositiveInfinity;
+            Opacity = 1;
+            WindowStartupLocation = WindowStartupLocation.Manual;
+        }
+    }
+
+    private void OnClosing(object? sender, CancelEventArgs e)
+    {
+        if (!_isWindowMode || _allowClose)
+        {
+            return;
+        }
+
+        PersistWindowModeBounds();
+        e.Cancel = true;
+        Hide();
+    }
+
+    private void OnWindowBoundsChanged(object? sender, EventArgs e)
+    {
+        if (!_isWindowMode || !_isFullyLoaded || _suppressStatePersistence || WindowState != WindowState.Normal)
+        {
+            return;
+        }
+
+        _windowStateSaveTimer.Stop();
+        _windowStateSaveTimer.Start();
+    }
+
+    private void OnWindowBoundsChanged(object? sender, SizeChangedEventArgs e)
+    {
+        OnWindowBoundsChanged(sender, EventArgs.Empty);
+    }
+
+    private void WindowStateSaveTimer_Tick(object? sender, EventArgs e)
+    {
+        _windowStateSaveTimer.Stop();
+        PersistWindowModeBounds();
+    }
+
+    public void ShowWindow(System.Drawing.Point? anchorPoint = null)
+    {
+        if (anchorPoint.HasValue)
+        {
+            _anchorPoint = anchorPoint;
+        }
+
+        if (!IsVisible)
+        {
+            Show();
+        }
+
+        if (_isWindowMode)
+        {
+            if (WindowState == WindowState.Minimized)
+            {
+                WindowState = WindowState.Normal;
+            }
+        }
+        else if (_isFullyLoaded)
+        {
+            PositionNearTray();
+        }
+
+        Activate();
+    }
+
+    public void CloseWindow(bool force)
+    {
+        _allowClose = force;
+        Close();
+    }
+
+    public void PrepareForExit()
+    {
+        _allowClose = true;
+    }
+
+    private void RestoreWindowModeBounds()
+    {
+        if (!_isWindowMode)
+        {
+            return;
+        }
+
+        var settings = StatsManager.Instance.Settings;
+        var width = settings.MainWindowWidth ?? DefaultWindowModeWidth;
+        var height = settings.MainWindowHeight ?? DefaultWindowModeHeight;
+
+        Width = Math.Max(MinWidth, width);
+        Height = Math.Max(MinHeight, height);
+
+        var left = settings.MainWindowLeft;
+        var top = settings.MainWindowTop;
+        if (!left.HasValue || !top.HasValue)
+        {
+            CenterWindowOnPrimaryScreen();
+            return;
+        }
+
+        WindowStartupLocation = WindowStartupLocation.Manual;
+        var bounds = new Rect(left.Value, top.Value, Width, Height);
+        var visibleBounds = GetVisibleWorkingArea();
+        if (!visibleBounds.HasValue)
+        {
+            Left = left.Value;
+            Top = top.Value;
+            return;
+        }
+
+        var clamped = ClampToVisibleArea(bounds, visibleBounds.Value);
+        _suppressStatePersistence = true;
+        try
+        {
+            Left = clamped.Left;
+            Top = clamped.Top;
+            Width = clamped.Width;
+            Height = clamped.Height;
+        }
+        finally
+        {
+            _suppressStatePersistence = false;
+        }
+    }
+
+    private void PersistWindowModeBounds()
+    {
+        if (!_isWindowMode || WindowState != WindowState.Normal)
+        {
+            return;
+        }
+
+        var settings = StatsManager.Instance.Settings;
+        settings.MainWindowLeft = Left;
+        settings.MainWindowTop = Top;
+        settings.MainWindowWidth = Width;
+        settings.MainWindowHeight = Height;
+        StatsManager.Instance.SaveSettings();
+    }
+
+    private static Rect ClampToVisibleArea(Rect bounds, Rect workingArea)
+    {
+        var width = Math.Min(bounds.Width, workingArea.Width);
+        var height = Math.Min(bounds.Height, workingArea.Height);
+        var left = Math.Max(workingArea.Left, Math.Min(bounds.Left, workingArea.Right - width));
+        var top = Math.Max(workingArea.Top, Math.Min(bounds.Top, workingArea.Bottom - height));
+        return new Rect(left, top, width, height);
+    }
+
+    private static Rect? GetVisibleWorkingArea()
+    {
+        Rect? combinedBounds = null;
+        foreach (var screen in Screen.AllScreens)
+        {
+            var area = new Rect(
+                screen.WorkingArea.Left,
+                screen.WorkingArea.Top,
+                screen.WorkingArea.Width,
+                screen.WorkingArea.Height);
+
+            combinedBounds = combinedBounds.HasValue ? Rect.Union(combinedBounds.Value, area) : area;
+        }
+
+        return combinedBounds;
+    }
+
+    private void CenterWindowOnPrimaryScreen()
+    {
+        var workArea = SystemParameters.WorkArea;
+        _suppressStatePersistence = true;
+        try
+        {
+            Left = workArea.Left + Math.Max(0, (workArea.Width - Width) / 2);
+            Top = workArea.Top + Math.Max(0, (workArea.Height - Height) / 2);
+        }
+        finally
+        {
+            _suppressStatePersistence = false;
+        }
     }
 }
