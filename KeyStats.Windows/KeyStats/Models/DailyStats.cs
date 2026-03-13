@@ -6,7 +6,7 @@ namespace KeyStats.Models;
 
 public class DailyStats
 {
-    private const double MetersPerPixel = 0.000264583;
+    private const double MetersPerPixel = AppSettings.DefaultMouseMetersPerPixel;
 
     [JsonPropertyName("date")]
     public DateTime Date { get; set; }

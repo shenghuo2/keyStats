@@ -124,7 +124,7 @@ public class DailyStats {
 
 **距离单位转换**:
 ```csharp
-const double MetersPerPixel = 0.000264583;  // 96 DPI下的换算
+const double MetersPerPixel = 0.00005;  // 默认经验值，建议用户通过校准获得更准确结果
 ```
 
 ### AppSettings (`Models/AppSettings.cs`)

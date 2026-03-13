@@ -5,7 +5,7 @@ namespace KeyStats.Models;
 
 public class AppSettings
 {
-    public const double DefaultMouseMetersPerPixel = 0.000264583;
+    public const double DefaultMouseMetersPerPixel = 0.00005;
 
     [JsonPropertyName("notificationsEnabled")]
     public bool NotificationsEnabled { get; set; }
