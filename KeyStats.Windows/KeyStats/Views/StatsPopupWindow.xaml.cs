@@ -2,9 +2,11 @@ using System;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Media.Animation;
 using System.Windows.Forms;
 using System.Windows.Threading;
+using KeyStats.Helpers;
 using KeyStats.Services;
 using KeyStats.ViewModels;
 
@@ -49,7 +51,22 @@ public partial class StatsPopupWindow : Window
         Closing += OnClosing;
         LocationChanged += OnWindowBoundsChanged;
         SizeChanged += OnWindowBoundsChanged;
+        SourceInitialized += OnSourceInitialized;
+
+        if (_isWindowMode)
+        {
+            ThemeManager.Instance.ThemeChanged += OnThemeChanged;
+        }
+
         Console.WriteLine("StatsPopupWindow constructor done");
+    }
+
+    private void OnSourceInitialized(object? sender, EventArgs e)
+    {
+        if (_isWindowMode)
+        {
+            ApplyWindowTitleBarTheme();
+        }
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -58,6 +75,7 @@ public partial class StatsPopupWindow : Window
         if (_isWindowMode)
         {
             RestoreWindowModeBounds();
+            ApplyWindowTitleBarTheme();
             Opacity = 1;
         }
         else
@@ -162,7 +180,29 @@ public partial class StatsPopupWindow : Window
     private void OnClosed(object? sender, EventArgs e)
     {
         _windowStateSaveTimer.Stop();
+
+        if (_isWindowMode)
+        {
+            ThemeManager.Instance.ThemeChanged -= OnThemeChanged;
+        }
+
         _viewModel.Cleanup();
+    }
+
+    private void OnThemeChanged()
+    {
+        if (!_isWindowMode)
+        {
+            return;
+        }
+
+        Dispatcher.BeginInvoke(new Action(ApplyWindowTitleBarTheme));
+    }
+
+    private void ApplyWindowTitleBarTheme()
+    {
+        var handle = new WindowInteropHelper(this).Handle;
+        NativeInterop.TrySetImmersiveDarkMode(handle, ThemeManager.Instance.IsDarkTheme);
     }
 
     private void Window_Deactivated(object sender, EventArgs e)
