@@ -28,55 +28,60 @@
         <ScrollViewer VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Disabled"
                       CanContentScroll="False">
-            <StackPanel Margin="12">
+            <StackPanel Margin="10">
             <!-- Header -->
             <TextBlock Text="今日统计" FontSize="14" FontWeight="SemiBold"
-                       Foreground="{DynamicResource TextPrimaryBrush}" Margin="4,0,0,10"/>
+                       Foreground="{DynamicResource TextPrimaryBrush}" Margin="2,0,0,8"/>
 
             <!-- Stats Cards -->
-            <Border Style="{DynamicResource CardBorder}" Margin="0,0,0,6">
+            <Border Style="{DynamicResource CardBorder}" Margin="0,0,0,4" Padding="9,8">
                 <controls:StatItemControl Icon="&#xE765;" Title="按键次数" Value="{Binding KeyPresses}"/>
             </Border>
 
-            <Grid Margin="0,0,0,6">
+            <Grid Margin="0,0,0,4">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="6"/>
+                    <ColumnDefinition Width="4"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="4"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-                <Border Grid.Column="0" Style="{DynamicResource CardBorder}">
+                <Border Grid.Column="0" Style="{DynamicResource CardBorder}" Padding="8,7">
                     <controls:StatItemControl Icon="&#xE8B0;" Title="左键点击" Value="{Binding LeftClicks}"/>
                 </Border>
-                <Border Grid.Column="2" Style="{DynamicResource CardBorder}">
+                <Border Grid.Column="2" Style="{DynamicResource CardBorder}" Padding="8,7">
+                    <controls:StatItemControl Icon="&#xE8B0;" Title="中键点击" Value="{Binding MiddleClicks}"/>
+                </Border>
+                <Border Grid.Column="4" Style="{DynamicResource CardBorder}" Padding="8,7">
                     <controls:StatItemControl Icon="&#xE8B0;" Title="右键点击" Value="{Binding RightClicks}"/>
                 </Border>
             </Grid>
 
-            <Grid Margin="0,0,0,6"
+            <Grid Margin="0,0,0,4"
                   Visibility="{Binding IsSideClickRowVisible, Converter={StaticResource BoolToVisibilityConverter}}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="6"/>
+                    <ColumnDefinition Width="4"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-                <Border Grid.Column="0" Style="{DynamicResource CardBorder}">
+                <Border Grid.Column="0" Style="{DynamicResource CardBorder}" Padding="8,7">
                     <controls:StatItemControl Icon="&#xE8B0;" Title="侧键后退" Value="{Binding SideBackClicks}"/>
                 </Border>
-                <Border Grid.Column="2" Style="{DynamicResource CardBorder}">
+                <Border Grid.Column="2" Style="{DynamicResource CardBorder}" Padding="8,7">
                     <controls:StatItemControl Icon="&#xE8B0;" Title="侧键前进" Value="{Binding SideForwardClicks}"/>
                 </Border>
             </Grid>
 
-            <Grid Margin="0,0,0,6">
+            <Grid Margin="0,0,0,4">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="6"/>
+                    <ColumnDefinition Width="4"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
-                <Border Grid.Column="0" Style="{DynamicResource CardBorder}">
+                <Border Grid.Column="0" Style="{DynamicResource CardBorder}" Padding="8,7">
                     <controls:StatItemControl Icon="&#xE8AB;" Title="鼠标移动" Value="{Binding MouseDistance}"/>
                 </Border>
-                <Border Grid.Column="2" Style="{DynamicResource CardBorder}">
+                <Border Grid.Column="2" Style="{DynamicResource CardBorder}" Padding="8,7">
                     <controls:StatItemControl Icon="&#xE74A;" Title="滚轮滚动" Value="{Binding ScrollDistance}"/>
                 </Border>
             </Grid>

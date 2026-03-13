@@ -28,6 +28,7 @@ public class InputMonitorService : IDisposable
     public event Action<string, string, string>? KeyPressed;
     public event Action<string, string>? LeftMouseClicked;
     public event Action<string, string>? RightMouseClicked;
+    public event Action<string, string>? MiddleMouseClicked;
     public event Action<string, string>? SideBackMouseClicked;
     public event Action<string, string>? SideForwardMouseClicked;
     public event Action<double>? MouseMoved;
@@ -159,6 +160,13 @@ public class InputMonitorService : IDisposable
                     {
                         var activeApp = ActiveWindowManager.GetActiveAppInfo();
                         ThreadPool.QueueUserWorkItem(_ => RightMouseClicked?.Invoke(activeApp.AppName, activeApp.DisplayName));
+                    }
+                    break;
+
+                case NativeInterop.WM_MBUTTONDOWN:
+                    {
+                        var activeApp = ActiveWindowManager.GetActiveAppInfo();
+                        ThreadPool.QueueUserWorkItem(_ => MiddleMouseClicked?.Invoke(activeApp.AppName, activeApp.DisplayName));
                     }
                     break;
 

@@ -38,6 +38,7 @@ public class StatsPopupViewModel : ViewModelBase
     private string _keyPresses = "0";
     private string _leftClicks = "0";
     private string _rightClicks = "0";
+    private string _middleClicks = "0";
     private string _sideBackClicks = "0";
     private string _sideForwardClicks = "0";
     private bool _isSideClickRowVisible;
@@ -64,6 +65,12 @@ public class StatsPopupViewModel : ViewModelBase
     {
         get => _rightClicks;
         set => SetProperty(ref _rightClicks, value);
+    }
+
+    public string MiddleClicks
+    {
+        get => _middleClicks;
+        set => SetProperty(ref _middleClicks, value);
     }
 
     public string SideBackClicks
@@ -204,6 +211,7 @@ public class StatsPopupViewModel : ViewModelBase
         KeyPresses = stats.KeyPresses.ToString("N0");
         LeftClicks = stats.LeftClicks.ToString("N0");
         RightClicks = stats.RightClicks.ToString("N0");
+        MiddleClicks = stats.MiddleClicks.ToString("N0");
         SideBackClicks = stats.SideBackClicks.ToString("N0");
         SideForwardClicks = stats.SideForwardClicks.ToString("N0");
         IsSideClickRowVisible = (stats.SideBackClicks + stats.SideForwardClicks) > 0;
