@@ -20,10 +20,23 @@ private func canonicalKeyName(_ keyName: String) -> String {
         return "+"
     }
 
-    let rawComponents = keyName
+    // Handle trailing "++" which means the base key is literal "+".
+    // e.g. "Cmd++" → ["Cmd", "+"]
+    var raw = trimmed
+    var trailingPlus = false
+    if raw.hasSuffix("++") {
+        raw = String(raw.dropLast())   // "Cmd++" → "Cmd+"
+        trailingPlus = true
+    }
+
+    var rawComponents = raw
         .split(separator: "+")
         .map { canonicalKeyPart(String($0)) }
         .filter { !$0.isEmpty }
+
+    if trailingPlus {
+        rawComponents.append("+")
+    }
 
     guard !rawComponents.isEmpty else { return "" }
 
