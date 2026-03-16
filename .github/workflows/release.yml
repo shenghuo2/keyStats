@@ -237,14 +237,12 @@ jobs:
               "license": "MIT",
               "url": "${DOWNLOAD_URL}",
               "hash": "${SHA256}",
-              "extract_dir": "KeyStats-${VERSION}",
               "shortcuts": [
                   ["KeyStats.exe", "KeyStats"]
               ],
               "checkver": "github",
               "autoupdate": {
-                  "url": "https://github.com/${{ github.repository }}/releases/download/v\$version/KeyStats-Windows-\$version.zip",
-                  "extract_dir": "KeyStats-\$version"
+                  "url": "https://github.com/${{ github.repository }}/releases/download/v\$version/KeyStats-Windows-\$version.zip"
               }
           }
           MANIFEST

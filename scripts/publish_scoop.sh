@@ -66,8 +66,6 @@ fi
 
 echo "==> Generating Scoop manifest..."
 
-EXTRACT_DIR="KeyStats-${VERSION}"
-
 MANIFEST=$(cat <<EOF
 {
     "version": "${VERSION}",
@@ -76,14 +74,12 @@ MANIFEST=$(cat <<EOF
     "license": "MIT",
     "url": "${DOWNLOAD_URL}",
     "hash": "${SHA256}",
-    "extract_dir": "${EXTRACT_DIR}",
     "shortcuts": [
         ["KeyStats.exe", "KeyStats"]
     ],
     "checkver": "github",
     "autoupdate": {
-        "url": "https://github.com/${GITHUB_REPO}/releases/download/v\$version/KeyStats-Windows-\$version.zip",
-        "extract_dir": "KeyStats-\$version"
+        "url": "https://github.com/${GITHUB_REPO}/releases/download/v\$version/KeyStats-Windows-\$version.zip"
     }
 }
 EOF
