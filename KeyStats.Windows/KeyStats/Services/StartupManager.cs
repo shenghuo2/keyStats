@@ -1,4 +1,6 @@
 using System;
+using System.Diagnostics;
+using System.IO;
 using Microsoft.Win32;
 
 namespace KeyStats.Services;
@@ -29,18 +31,54 @@ public class StartupManager
         }
     }
 
+    public void SyncWithSettings()
+    {
+        try
+        {
+            var shouldEnable = StatsManager.Instance.Settings.LaunchAtStartup;
+            if (!shouldEnable)
+            {
+                return;
+            }
+
+            using var key = Registry.CurrentUser.OpenSubKey(RegistryKeyPath, true);
+            if (key == null)
+            {
+                return;
+            }
+
+            var currentExePath = GetCurrentExecutablePath();
+            if (string.IsNullOrWhiteSpace(currentExePath))
+            {
+                return;
+            }
+
+            var configuredExePath = GetConfiguredExecutablePath(key);
+            if (!PathsEqual(configuredExePath, currentExePath))
+            {
+                key.SetValue(AppName, $"\"{currentExePath}\"");
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error syncing startup: {ex.Message}");
+        }
+    }
+
     public void SetEnabled(bool enabled)
     {
         try
         {
             using var key = Registry.CurrentUser.OpenSubKey(RegistryKeyPath, true);
-            if (key == null) return;
+            if (key == null)
+            {
+                return;
+            }
 
             if (enabled)
             {
-                // .NET Framework 4.8 兼容：使用 Assembly.Location 替代 Environment.ProcessPath
-                var exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
-                if (!string.IsNullOrEmpty(exePath))
+                var exePath = GetCurrentExecutablePath();
+                if (!string.IsNullOrWhiteSpace(exePath))
                 {
                     key.SetValue(AppName, $"\"{exePath}\"");
                 }
@@ -50,14 +88,87 @@ public class StartupManager
                 key.DeleteValue(AppName, false);
             }
 
-            // Update settings
             StatsManager.Instance.Settings.LaunchAtStartup = enabled;
             StatsManager.Instance.SaveSettings();
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error setting startup: {ex.Message}");
+            Debug.WriteLine($"Error setting startup: {ex.Message}");
             throw;
         }
+    }
+
+    private static string? GetCurrentExecutablePath()
+    {
+        try
+        {
+            var exePath = Process.GetCurrentProcess().MainModule?.FileName;
+            if (!string.IsNullOrWhiteSpace(exePath))
+            {
+                return Path.GetFullPath(exePath);
+            }
+        }
+        catch
+        {
+        }
+
+        try
+        {
+            var exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+            if (!string.IsNullOrWhiteSpace(exePath))
+            {
+                return Path.GetFullPath(exePath);
+            }
+        }
+        catch
+        {
+        }
+
+        return null;
+    }
+
+    private static string? GetConfiguredExecutablePath(RegistryKey key)
+    {
+        if (key.GetValue(AppName) is not string rawValue || string.IsNullOrWhiteSpace(rawValue))
+        {
+            return null;
+        }
+
+        var trimmed = rawValue.Trim();
+        if (trimmed.StartsWith("\"", StringComparison.Ordinal))
+        {
+            var closingQuoteIndex = trimmed.IndexOf('"', 1);
+            if (closingQuoteIndex > 1)
+            {
+                trimmed = trimmed.Substring(1, closingQuoteIndex - 1);
+            }
+        }
+        else
+        {
+            var firstSpaceIndex = trimmed.IndexOf(' ');
+            if (firstSpaceIndex > 0)
+            {
+                trimmed = trimmed.Substring(0, firstSpaceIndex);
+            }
+        }
+
+        try
+        {
+            return Path.GetFullPath(trimmed);
+        }
+        catch
+        {
+            return trimmed;
+        }
+    }
+
+    private static bool PathsEqual(string? left, string? right)
+    {
+        if (string.IsNullOrWhiteSpace(left) || string.IsNullOrWhiteSpace(right))
+        {
+            return false;
+        }
+
+        return string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
     }
 }
