@@ -50,6 +50,7 @@ packages/
 .idea/
 *.sln.iml
 .vscode/
+.claude/
 
 # Resharper / dotCover / NCrunch
 _ReSharper*/
