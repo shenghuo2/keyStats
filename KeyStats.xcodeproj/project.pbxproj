@@ -393,6 +393,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				KEYSTATS_BUILD_TAG = "v$(MARKETING_VERSION)";
 				MARKETING_VERSION = 1.41;
 				PRODUCT_BUNDLE_IDENTIFIER = com.keystats.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -421,6 +422,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				KEYSTATS_BUILD_TAG = "v$(MARKETING_VERSION)";
 				MARKETING_VERSION = 1.41;
 				PRODUCT_BUNDLE_IDENTIFIER = com.keystats.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";

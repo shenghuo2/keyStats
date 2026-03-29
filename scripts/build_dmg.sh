@@ -18,6 +18,24 @@ PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 OUTPUT_DIR="$PROJECT_DIR"
 cd "$PROJECT_DIR"
 
+BUILD_SETTINGS=(
+    CODE_SIGN_IDENTITY="-"
+    ARCHS="arm64 x86_64"
+    ONLY_ACTIVE_ARCH=NO
+)
+
+if [ -n "${MARKETING_VERSION:-}" ]; then
+    BUILD_SETTINGS+=("MARKETING_VERSION=$MARKETING_VERSION")
+fi
+
+if [ -n "${CURRENT_PROJECT_VERSION:-}" ]; then
+    BUILD_SETTINGS+=("CURRENT_PROJECT_VERSION=$CURRENT_PROJECT_VERSION")
+fi
+
+if [ -n "${KEYSTATS_BUILD_TAG:-}" ]; then
+    BUILD_SETTINGS+=("KEYSTATS_BUILD_TAG=$KEYSTATS_BUILD_TAG")
+fi
+
 echo "📦 开始打包 $APP_NAME..."
 
 # 清理旧的构建
@@ -33,18 +51,14 @@ xcodebuild -project "$PROJECT" \
     -derivedDataPath "$BUILD_DIR/DerivedData" \
     -archivePath "$BUILD_DIR/$APP_NAME.xcarchive" \
     archive \
-    CODE_SIGN_IDENTITY="-" \
-    ARCHS="arm64 x86_64" \
-    ONLY_ACTIVE_ARCH=NO \
+    "${BUILD_SETTINGS[@]}" \
     | xcpretty || xcodebuild -project "$PROJECT" \
     -scheme "$SCHEME" \
     -configuration "$CONFIGURATION" \
     -derivedDataPath "$BUILD_DIR/DerivedData" \
     -archivePath "$BUILD_DIR/$APP_NAME.xcarchive" \
     archive \
-    CODE_SIGN_IDENTITY="-" \
-    ARCHS="arm64 x86_64" \
-    ONLY_ACTIVE_ARCH=NO
+    "${BUILD_SETTINGS[@]}"
 
 # 导出 .app
 echo "📤 导出应用..."

@@ -24,17 +24,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Extract version
+      - name: Extract version metadata
         id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Update app version
         run: |
-          VERSION=${{ steps.version.outputs.VERSION }}
-          sed -i '' "s/MARKETING_VERSION = .*/MARKETING_VERSION = $VERSION;/" KeyStats.xcodeproj/project.pbxproj
-          echo "Updated MARKETING_VERSION to $VERSION"
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#v}"
+          MARKETING_VERSION="$(printf '%s' "$VERSION" | sed -E 's/[-+].*$//')"
+          echo "TAG=$TAG" >> $GITHUB_OUTPUT
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "MARKETING_VERSION=$MARKETING_VERSION" >> $GITHUB_OUTPUT
 
       - name: Build DMG
+        env:
+          MARKETING_VERSION: ${{ steps.version.outputs.MARKETING_VERSION }}
+          CURRENT_PROJECT_VERSION: ${{ github.run_number }}
+          KEYSTATS_BUILD_TAG: ${{ steps.version.outputs.TAG }}
         run: ./scripts/build_dmg.sh
 
       - name: Validate Sparkle private key
@@ -82,7 +86,10 @@ jobs:
             archive \
             CODE_SIGN_IDENTITY="-" \
             ARCHS="arm64 x86_64" \
-            ONLY_ACTIVE_ARCH=NO
+            ONLY_ACTIVE_ARCH=NO \
+            MARKETING_VERSION="${{ steps.version.outputs.MARKETING_VERSION }}" \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            KEYSTATS_BUILD_TAG="${{ steps.version.outputs.TAG }}"
 
           APP_PATH="$ARCHIVE_PATH/Products/Applications/$APP_NAME.app"
           cp -R "$APP_PATH" "$STAGING_DIR/"

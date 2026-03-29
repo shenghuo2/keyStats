@@ -205,12 +205,7 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
         headerSubtitleLabel.font = NSFont.systemFont(ofSize: 12)
         headerSubtitleLabel.textColor = .secondaryLabelColor
 
-        let versionString: String = {
-            let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "–"
-            let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "–"
-            return "v\(version) (\(build))"
-        }()
-        let versionLabel = NSTextField(labelWithString: versionString)
+        let versionLabel = NSTextField(labelWithString: versionDisplayText())
         versionLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
         versionLabel.textColor = .tertiaryLabelColor
 
@@ -1240,5 +1235,18 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
         alert.alertStyle = .warning
         alert.addButton(withTitle: NSLocalizedString("button.ok", comment: ""))
         alert.runModal()
+    }
+
+    private func versionDisplayText() -> String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "–"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "–"
+        let rawTag = Bundle.main.object(forInfoDictionaryKey: "KeyStatsBuildTag") as? String
+        let tag = rawTag?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if let tag, !tag.isEmpty {
+            return "\(tag) (\(build))"
+        }
+
+        return "v\(version) (\(build))"
     }
 }
