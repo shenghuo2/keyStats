@@ -1,5 +1,4 @@
 import Cocoa
-import PostHog
 
 private func resolvedCGColor(_ color: NSColor, for view: NSView) -> CGColor {
     var resolved: CGColor = color.cgColor
@@ -1018,7 +1017,6 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
         do {
             try LaunchAtLoginManager.shared.setEnabled(shouldEnable)
             updateState()
-            PostHogSDK.shared.capture("settingChanged", properties: ["setting": "launchAtLogin", "enabled": String(shouldEnable)])
         } catch {
             updateState()
             showLaunchAtLoginError()
@@ -1046,7 +1044,6 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
 
         if alert.runModal() == .alertFirstButtonReturn {
             StatsManager.shared.resetStats()
-            PostHogSDK.shared.capture("statsReset")
         }
     }
 
@@ -1189,7 +1186,6 @@ final class SettingsViewController: NSViewController, NSTextFieldDelegate {
         do {
             let data = try Data(contentsOf: url)
             try StatsManager.shared.importStatsData(from: data, mode: mode)
-            PostHogSDK.shared.capture("statsImported", properties: ["mode": mode == .overwrite ? "overwrite" : "merge"])
             showImportSuccess(mode: mode)
         } catch {
             showImportError(error)

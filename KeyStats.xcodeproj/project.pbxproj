@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		941ADB172F18D1AE00B2D578 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = 941ADB162F18D1AE00B2D578 /* PostHog */; };
-		941ADB182F18D1AE00B2D578 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 941ADB1A2F18D1AE00B2D578 /* Sparkle */; };
 		A1000001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000001 /* AppDelegate.swift */; };
 		A1000002 /* InputMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000002 /* InputMonitor.swift */; };
 		A1000003 /* StatsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000003 /* StatsManager.swift */; };
@@ -79,8 +77,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				941ADB172F18D1AE00B2D578 /* PostHog in Frameworks */,
-				941ADB182F18D1AE00B2D578 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -157,8 +153,6 @@
 			);
 			name = KeyStats;
 			packageProductDependencies = (
-				941ADB162F18D1AE00B2D578 /* PostHog */,
-				941ADB1A2F18D1AE00B2D578 /* Sparkle */,
 			);
 			productName = KeyStats;
 			productReference = A3000001 /* KeyStats.app */;
@@ -190,8 +184,6 @@
 			);
 			mainGroup = A5000001;
 			packageReferences = (
-				941ADB152F18D1AE00B2D578 /* XCRemoteSwiftPackageReference "posthog-ios" */,
-				941ADB192F18D1AE00B2D578 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			productRefGroup = A5000003 /* Products */;
 			projectDirPath = "";
@@ -460,37 +452,6 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCRemoteSwiftPackageReference section */
-		941ADB152F18D1AE00B2D578 /* XCRemoteSwiftPackageReference "posthog-ios" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/PostHog/posthog-ios";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 3.0.0;
-			};
-		};
-		941ADB192F18D1AE00B2D578 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/sparkle-project/Sparkle";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.0.0;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		941ADB162F18D1AE00B2D578 /* PostHog */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 941ADB152F18D1AE00B2D578 /* XCRemoteSwiftPackageReference "posthog-ios" */;
-			productName = PostHog;
-		};
-		941ADB1A2F18D1AE00B2D578 /* Sparkle */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 941ADB192F18D1AE00B2D578 /* XCRemoteSwiftPackageReference "Sparkle" */;
-			productName = Sparkle;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A8000001 /* Project object */;
 }

@@ -13,8 +13,6 @@ using KeyStats.Helpers;
 using KeyStats.Services;
 using KeyStats.ViewModels;
 using KeyStats.Views;
-using DotPostHog;
-using DotPostHog.Model;
 using Microsoft.Toolkit.Uwp.Notifications;
 using Microsoft.Win32;
 using Forms = System.Windows.Forms;
@@ -33,8 +31,6 @@ public partial class App : System.Windows.Application
     private KeyboardHeatmapWindow? _keyboardHeatmapWindow;
     private KeyHistoryWindow? _keyHistoryWindow;
     private System.Threading.Mutex? _singleInstanceMutex;
-    private string? _appVersion;
-    private IPostHogAnalytics? _postHogClient;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -80,7 +76,6 @@ public partial class App : System.Windows.Application
             // Initialize services
             var statsManager = StatsManager.Instance;
             StartupManager.Instance.SyncWithSettings();
-            _appVersion = typeof(App).Assembly.GetName().Version?.ToString() ?? "0.0.0";
             InitializeAnalytics(statsManager);
             InputMonitorService.Instance.StartMonitoring();
 
@@ -583,224 +578,11 @@ public partial class App : System.Windows.Application
 
     private void InitializeAnalytics(StatsManager statsManager)
     {
-        var settings = statsManager.Settings;
-        if (!settings.AnalyticsEnabled)
-        {
-            return;
-        }
-
-        var apiKey = settings.AnalyticsApiKey;
-        if (string.IsNullOrWhiteSpace(apiKey))
-        {
-            return;
-        }
-
-        var host = string.IsNullOrWhiteSpace(settings.AnalyticsHost)
-            ? "https://app.posthog.com"
-            : settings.AnalyticsHost!.TrimEnd('/');
-
-        try
-        {
-            // 使用 DotPostHog 创建分析客户端
-            // DotPostHog 支持 .NET Framework 4.8
-            _postHogClient = PostHogAnalytics.Create(
-                publicApiKey: apiKey,
-                host: host
-            );
-
-            var updated = false;
-            if (string.IsNullOrWhiteSpace(settings.AnalyticsDistinctId))
-            {
-                settings.AnalyticsDistinctId = Guid.NewGuid().ToString("N");
-                updated = true;
-            }
-
-            if (settings.AnalyticsFirstOpenUtc == null)
-            {
-                settings.AnalyticsFirstOpenUtc = DateTime.UtcNow;
-                updated = true;
-            }
-
-            if (updated)
-            {
-                statsManager.SaveSettings();
-            }
-
-            // 使用 Identify 设置 distinctId
-            var distinctId = settings.AnalyticsDistinctId;
-            if (!string.IsNullOrWhiteSpace(distinctId))
-            {
-                try
-                {
-                    _postHogClient.Identify(distinctId, null);
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Failed to identify user: {ex}");
-                }
-            }
-
-            if (!settings.AnalyticsInstallTracked)
-            {
-                CaptureEvent("app_install", statsManager, new Dictionary<string, object?>
-                {
-                    ["install_utc"] = settings.AnalyticsFirstOpenUtc?.ToString("o")
-                });
-                settings.AnalyticsInstallTracked = true;
-                statsManager.SaveSettings();
-            }
-
-            CaptureEvent("app_open", statsManager, null);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Failed to initialize analytics: {ex}");
-            // 分析初始化失败不应阻止应用启动
-        }
-    }
-
-    private void CaptureEvent(string eventName, StatsManager statsManager, Dictionary<string, object?>? extraProperties)
-    {
-        if (_postHogClient == null)
-        {
-            return;
-        }
-
-        var distinctId = statsManager.Settings.AnalyticsDistinctId;
-        if (string.IsNullOrWhiteSpace(distinctId))
-        {
-            return;
-        }
-
-        var baseProperties = BuildBaseProperties(statsManager.Settings);
-        // 将 distinctId 加到属性中，因为 DotPostHog 的 Capture 可能不接受 distinctId 作为单独参数
-        // distinctId 已经通过上面的检查确保不为空
-        baseProperties["distinct_id"] = distinctId!;
-        
-        if (extraProperties != null)
-        {
-            foreach (var kvp in extraProperties)
-            {
-                if (kvp.Value != null)
-                {
-                    baseProperties[kvp.Key] = kvp.Value;
-                }
-            }
-        }
-
-        try
-        {
-            // 将 Dictionary 转换为 PostHogEventProperties
-            var postHogProperties = new PostHogEventProperties();
-            foreach (var kvp in baseProperties)
-            {
-                postHogProperties[kvp.Key] = kvp.Value;
-            }
-
-            // DotPostHog 的 Capture 方法可能只接受事件名和属性
-            // distinctId 通过 Identify 方法设置，或作为属性传递
-            _postHogClient.Capture(
-                eventName,
-                postHogProperties
-            );
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Failed to capture event {eventName}: {ex}");
-            // 事件发送失败不应影响应用运行
-        }
-    }
-
-    private Dictionary<string, object> BuildBaseProperties(Models.AppSettings settings)
-    {
-        var appVersion = _appVersion ?? "0.0.0";
-        var osVersion = Environment.OSVersion.Version;
-        var (windowsName, windowsBuild) = GetWindowsVersionInfo(osVersion);
-        var properties = new Dictionary<string, object>
-        {
-            ["app_name"] = "KeyStats",
-            ["app_version"] = appVersion,
-            ["platform"] = "windows",
-            ["$os"] = "Windows",
-            ["$os_version"] = windowsName,
-            ["os_build"] = windowsBuild,
-            ["dotnet_version"] = System.Environment.Version.ToString(),
-            ["locale"] = CultureInfo.CurrentUICulture.Name
-        };
-
-        if (settings.AnalyticsFirstOpenUtc.HasValue)
-        {
-            properties["first_open_utc"] = settings.AnalyticsFirstOpenUtc.Value.ToString("o");
-        }
-
-        // DotPostHog 可能不支持 $set_once，但保留属性结构以便将来使用
-        properties["$set_once"] = new Dictionary<string, object>
-        {
-            ["first_open_utc"] = settings.AnalyticsFirstOpenUtc?.ToString("o") ?? string.Empty,
-            ["install_utc"] = settings.AnalyticsFirstOpenUtc?.ToString("o") ?? string.Empty
-        };
-
-        return properties;
-    }
-
-    private static (string Name, string Build) GetWindowsVersionInfo(Version version)
-    {
-        var build = version.Build;
-        var buildString = build.ToString();
-
-        // Windows 11: Build 22000+
-        // Windows 10: Build 10240-21999
-        // Windows 8.1: Build 9600
-        // Windows 8: Build 9200
-        // Windows 7: Build 7600/7601
-        string name;
-        if (build >= 22000)
-        {
-            name = "Windows 11";
-        }
-        else if (build >= 10240)
-        {
-            name = "Windows 10";
-        }
-        else if (build >= 9600)
-        {
-            name = "Windows 8.1";
-        }
-        else if (build >= 9200)
-        {
-            name = "Windows 8";
-        }
-        else if (build >= 7600)
-        {
-            name = "Windows 7";
-        }
-        else
-        {
-            name = $"Windows (Build {build})";
-        }
-
-        return (name, buildString);
+        _ = statsManager;
     }
 
     private void TrackAnalyticsExit()
     {
-        if (_postHogClient == null)
-        {
-            return;
-        }
-
-        try
-        {
-            var statsManager = StatsManager.Instance;
-            CaptureEvent("app_exit", statsManager, null);
-
-            // DotPostHog 需要调用 Flush() 确保所有事件都被发送
-            _postHogClient.Flush();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Failed to track exit analytics: {ex}");
-        }
     }
 
     /// <summary>
@@ -808,29 +590,8 @@ public partial class App : System.Windows.Application
     /// </summary>
     public void TrackPageView(string pageName, Dictionary<string, object?>? extraProperties = null)
     {
-        if (_postHogClient == null)
-        {
-            return;
-        }
-
-        var statsManager = StatsManager.Instance;
-        var properties = new Dictionary<string, object?>
-        {
-            ["page_name"] = pageName
-        };
-
-        if (extraProperties != null)
-        {
-            foreach (var kvp in extraProperties)
-            {
-                if (kvp.Value != null)
-                {
-                    properties[kvp.Key] = kvp.Value;
-                }
-            }
-        }
-
-        CaptureEvent("pageview", statsManager, properties);
+        _ = pageName;
+        _ = extraProperties;
     }
 
     /// <summary>
@@ -838,29 +599,8 @@ public partial class App : System.Windows.Application
     /// </summary>
     public void TrackClick(string elementName, Dictionary<string, object?>? extraProperties = null)
     {
-        if (_postHogClient == null)
-        {
-            return;
-        }
-
-        var statsManager = StatsManager.Instance;
-        var properties = new Dictionary<string, object?>
-        {
-            ["element_name"] = elementName
-        };
-
-        if (extraProperties != null)
-        {
-            foreach (var kvp in extraProperties)
-            {
-                if (kvp.Value != null)
-                {
-                    properties[kvp.Key] = kvp.Value;
-                }
-            }
-        }
-
-        CaptureEvent("click", statsManager, properties);
+        _ = elementName;
+        _ = extraProperties;
     }
 
     /// <summary>

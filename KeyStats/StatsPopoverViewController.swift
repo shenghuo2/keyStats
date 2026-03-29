@@ -1,5 +1,4 @@
 import Cocoa
-import PostHog
 import SwiftUI
 
 private func resolvedCGColor(_ color: NSColor, for view: NSView) -> CGColor {
@@ -788,7 +787,6 @@ class StatsPopoverViewController: NSViewController {
     // MARK: - 按钮操作
 
     @objc private func openSettings() {
-        PostHogSDK.shared.capture("settingsOpened")
         SettingsWindowController.shared.show()
         view.window?.performClose(nil)
     }

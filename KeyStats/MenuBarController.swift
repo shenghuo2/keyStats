@@ -1,5 +1,4 @@
 import Cocoa
-import PostHog
 import SwiftUI
 
 enum DynamicIconColorStyle: String {
@@ -143,7 +142,6 @@ class MenuBarController {
 
         // 确保 popover 窗口成为 key window
         popover.contentViewController?.view.window?.makeKey()
-        PostHogSDK.shared.capture("popoverOpened")
     }
     
     private func closePopover() {

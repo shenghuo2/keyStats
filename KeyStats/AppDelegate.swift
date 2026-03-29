@@ -1,5 +1,4 @@
 import Cocoa
-import PostHog
 
 @main
 class AppDelegate: NSObject, NSApplicationDelegate {
@@ -18,17 +17,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
-        // 初始化 PostHog
-        let config = PostHogConfig(apiKey: "phc_TYyyKIfGgL1CXZx7t9dY7igE3yNwNpjj9aqItSpNVLx", host: "https://us.i.posthog.com")
-        config.captureApplicationLifecycleEvents = true  // 自动采集应用生命周期事件
-        config.captureScreenViews = true  // 自动采集屏幕视图
-        PostHogSDK.shared.setup(config)
-        PostHogSDK.shared.register(["platform": "macOS"])  // 注册平台属性
-
         // 初始化菜单栏控制器
         menuBarController = MenuBarController()
         applyAppIcon()
-        _ = UpdateManager.shared
         
         setupWindowMenu()
 
@@ -84,7 +75,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     self.permissionCheckTimer = nil
                     InputMonitor.shared.startMonitoring()
                     self.promptLaunchAtLoginIfNeeded()
-                    PostHogSDK.shared.capture("permissionGranted", properties: ["permission": "accessibility"])
                     print("权限已授予，开始监听")
                     return
                 }
