@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Reflection;
 using System.Windows;
 
 namespace KeyStats.Views;
@@ -10,6 +11,7 @@ public partial class SettingsWindow : Window
     public SettingsWindow()
     {
         InitializeComponent();
+        VersionTextBlock.Text = GetVersionText();
     }
 
     private void OpenStats_Click(object sender, RoutedEventArgs e)
@@ -50,5 +52,22 @@ public partial class SettingsWindow : Window
         {
             MessageBox.Show(this, "无法打开 GitHub 页面。", "KeyStats", MessageBoxButton.OK, MessageBoxImage.Information);
         }
+    }
+
+    private static string GetVersionText()
+    {
+        var assembly = Assembly.GetExecutingAssembly();
+        var informationalVersion = assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+            .InformationalVersion?
+            .Trim();
+
+        if (!string.IsNullOrWhiteSpace(informationalVersion))
+        {
+            return $"版本 {informationalVersion}";
+        }
+
+        var assemblyVersion = assembly.GetName().Version?.ToString();
+        return $"版本 {assemblyVersion ?? "1.0.0"}";
     }
 }

@@ -17,6 +17,7 @@
     <AssemblyName>KeyStats</AssemblyName>
     <RootNamespace>KeyStats</RootNamespace>
     <Version>1.0.0</Version>
+    <InformationalVersion>v$(Version)</InformationalVersion>
     <Authors>KeyStats</Authors>
     <Product>KeyStats</Product>
     <Description>Keyboard and mouse statistics tracker for Windows</Description>

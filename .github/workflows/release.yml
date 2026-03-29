@@ -141,10 +141,14 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Extract version
+      - name: Extract version metadata
         id: version
         shell: bash
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#v}"
+          echo "TAG=$TAG" >> $GITHUB_OUTPUT
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -156,8 +160,13 @@ jobs:
         run: |
           $csprojPath = "KeyStats.Windows/KeyStats/KeyStats.csproj"
           $version = "${{ steps.version.outputs.VERSION }}"
-          (Get-Content $csprojPath) -replace '<Version>.*</Version>', "<Version>$version</Version>" | Set-Content $csprojPath
+          $tag = "${{ steps.version.outputs.TAG }}"
+          $content = Get-Content $csprojPath -Raw
+          $content = $content -replace '<Version>.*</Version>', "<Version>$version</Version>"
+          $content = $content -replace '<InformationalVersion>.*</InformationalVersion>', "<InformationalVersion>$tag</InformationalVersion>"
+          Set-Content $csprojPath $content
           Write-Host "Updated Version to $version"
+          Write-Host "Updated InformationalVersion to $tag"
 
       - name: Build Windows app
         shell: pwsh

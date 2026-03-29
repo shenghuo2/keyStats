@@ -42,6 +42,9 @@
         <TextBlock Text="在这里管理导入导出与通知设置"
                    Foreground="{DynamicResource TextSecondaryBrush}" FontSize="12"
                    TextWrapping="Wrap" Margin="0,0,0,16"/>
+        <TextBlock x:Name="VersionTextBlock"
+                   Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"
+                   Margin="0,0,0,16"/>
 
         <Border Style="{DynamicResource CardBorder}" Margin="0,0,0,8" Padding="14,12">
             <Grid>
